@@ -23,13 +23,10 @@ func main() {
 		log.SetOutput(io.Discard)
 	}
 
-	content, err := os.ReadFile("content.md")
-	if err != nil {
-		log.Fatal(err)
-	}
+	m := ui.New()
 
 	p := tea.NewProgram(
-		ui.NewModel(string(content)),
+		m,
 		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 	)

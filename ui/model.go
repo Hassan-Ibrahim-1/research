@@ -2,8 +2,10 @@ package ui
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
+	"github.com/Hassan-Ibrahim-1/research/ui/prompt"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	lg "github.com/charmbracelet/lipgloss"
@@ -25,21 +27,19 @@ var (
 
 type Model struct {
 	viewport viewport.Model
-	content  string
 	ready    bool
+	prompt   prompt.Model
 }
 
-func NewModel(content string) *Model {
-	return &Model{
-		content: content,
-	}
+func New() Model {
+	return Model{}
 }
 
-func (Model) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -57,45 +57,67 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
-		headerHeight := lg.Height(m.headerView())
-		footerHeight := lg.Height(m.footerView())
-		verticalMarginHeight := headerHeight + footerHeight
-
-		viewportWidth := msg.Width
-		viewportHeight := msg.Height - verticalMarginHeight
-
-		if !m.ready {
-			m.viewport = viewport.New(viewportWidth, viewportHeight)
-			m.viewport.YPosition = headerHeight
-			m.viewport.SetContent(m.content)
-
-			m.viewport.Style = lg.NewStyle().
-				BorderStyle(lg.RoundedBorder()).
-				BorderForeground(lg.Color("62")).
-				Padding(2).Margin(10)
-
-			m.ready = true
-		} else {
-			m.viewport.Height = viewportHeight
-			m.viewport.Width = viewportWidth
-		}
+		// TODO: handle promptView resizes
+		m.onWindowResize(msg)
+	case prompt.PromptEnteredMsg:
+		log.Println("setting content to:", msg.Content)
+		m.viewport.SetContent(msg.Content)
 	}
 
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
+
+	m.prompt, cmd = m.prompt.Update(msg)
+	cmds = append(cmds, cmd)
+
 	return m, tea.Batch(cmds...)
 }
 
-func (m *Model) View() string {
+func (m Model) View() string {
 	if !m.ready {
 		return "\n Initializing..."
 	}
 	return fmt.Sprintf(
-		"%s\n%s\n%s",
+		"%s\n%s\n%s\n%s",
 		m.headerView(),
 		m.chatView(),
 		m.footerView(),
+		m.promptView(),
 	)
+}
+
+func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
+	headerHeight := lg.Height(m.headerView())
+	footerHeight := lg.Height(m.footerView())
+	verticalMarginHeight := headerHeight + footerHeight
+
+	viewportWidth := ws.Width
+
+	if !m.ready {
+		m.prompt = prompt.New(viewportWidth)
+
+		viewportHeight :=
+			ws.Height - (verticalMarginHeight + lg.Height(m.promptView()))
+
+		m.viewport = viewport.New(viewportWidth, viewportHeight)
+		m.viewport.YPosition = headerHeight
+
+		m.prompt.SetYPosition(viewportHeight + footerHeight)
+		m.prompt.SetFocus(true)
+
+		m.viewport.Style = lg.NewStyle().BorderStyle(lg.RoundedBorder())
+		// BorderForeground(lg.Color("62")).
+		// Padding(2).Margin(10)
+
+		m.ready = true
+
+	} else {
+		viewportHeight :=
+			ws.Height - (verticalMarginHeight + lg.Height(m.promptView()))
+
+		m.viewport.Height = viewportHeight
+		m.viewport.Width = viewportWidth
+	}
 }
 
 func (m *Model) headerView() string {
@@ -114,4 +136,8 @@ func (m *Model) footerView() string {
 	)
 	line := strings.Repeat("-", max(0, m.viewport.Width-lg.Width(info)))
 	return lg.JoinHorizontal(lg.Center, info, line)
+}
+
+func (m *Model) promptView() string {
+	return m.prompt.View()
 }
