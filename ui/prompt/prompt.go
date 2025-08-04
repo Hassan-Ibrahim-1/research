@@ -72,6 +72,11 @@ func (l *lines) clear() {
 func (l *lines) writeRunes(runes []rune) {
 	ln := &l.data[l.currentLine]
 
+	// this might not be what i want???
+	// if there is a line after the currentLine then
+	// adjustLines will just merge the two, unless this line has a \n
+	// also what if a line is just a newline and i start writing to it.
+	// it should still have that newline in the end right?
 	if len(ln.runes) > 0 && ln.runes[len(ln.runes)-1] == '\n' {
 		ln = l.addLine()
 		l.currentLine++
@@ -119,7 +124,7 @@ func (l *lines) adjustLines() {
 
 	var linesToRemove []int
 
-	for i := 0; i < len(l.data); i++ {
+	for i := range l.data {
 		ln := &l.data[i]
 
 		var nextLine *line
@@ -174,7 +179,7 @@ func (l *lines) adjustLines() {
 
 	for i := len(linesToRemove) - 1; i >= 0; i-- {
 		lineToRemove := linesToRemove[i]
-		l.data = append(l.data[:lineToRemove], l.data[lineToRemove+1:]...)
+		l.data = slices.Delete(l.data, lineToRemove, lineToRemove+1)
 	}
 }
 
