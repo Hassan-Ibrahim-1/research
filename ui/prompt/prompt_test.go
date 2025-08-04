@@ -121,6 +121,15 @@ func TestLines_writeRunes(t *testing.T) {
 				},
 			},
 		},
+		{
+			l:        []string{"Hello"},
+			maxWidth: 128,
+			actions: []Action{
+				{", World\n", 0, []string{"Hello, World\n"}},
+				{"foo", 0, []string{"Hello, World\n", "foo"}},
+				{"bar", 1, []string{"Hello, World\n", "foobar"}},
+			},
+		},
 	}
 
 	for i, tt := range tests {
