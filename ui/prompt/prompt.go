@@ -2,6 +2,8 @@ package prompt
 
 import (
 	"log"
+	"slices"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 
@@ -11,7 +13,7 @@ import (
 
 type Model struct {
 	viewport viewport.Model
-	content  string
+	content  lines
 	focused  bool
 
 	promptPrefix   string
@@ -31,6 +33,184 @@ func newPromptEnteredMsg(content string) tea.Cmd {
 	}
 }
 
+// PromptResizeMsg is sent when the prompt shrinks or grows
+type PromptResizeMsg struct {
+	Height int
+}
+
+type line struct {
+	runes []rune
+	pos   int
+}
+
+func newLines(maxWidth int) lines {
+	return lines{
+		maxWidth: maxWidth,
+	}
+}
+
+type lines struct {
+	data        []line
+	maxWidth    int
+	currentLine int
+}
+
+func (l *lines) String() string {
+	b := strings.Builder{}
+
+	for _, line := range l.data {
+		b.WriteString(string(line.runes))
+	}
+
+	return b.String()
+}
+
+func (l *lines) clear() {
+	l.data = nil
+}
+
+func (l *lines) writeRunes(runes []rune) {
+	ln := &l.data[l.currentLine]
+
+	if len(ln.runes) > 0 && ln.runes[len(ln.runes)-1] == '\n' {
+		ln = l.addLine()
+		l.currentLine++
+	}
+	ln.runes = append(ln.runes, runes...)
+
+	l.adjustLines()
+
+	// if the current line is full then start writing to the next line
+	// but if writing in the middle of a line and the line starts overflowing
+	// then move the overflown data to the next line and keep doing this until each line
+	// fits within maxWidth. add more lines if needed
+	// how would removing characters with backspace work? maybe add another function
+	// called removeChar which removes the current character on the current line
+	// removeChar will get called when backspace is pressed
+	// removeChar should also handle the case where overflow doesn't happen anymore
+	// so characters will move back
+
+	// maybe have a separate function that adjusts all lines and makes sure that their
+	// newlines should also be handled properly
+}
+
+func (l *lines) removeChar() {
+	// ln := l.data[l.currentLine]
+	// if ln.pos < len(ln.runes) {
+	// 	ln.runes = append(ln.runes[:ln.pos], ln.runes[ln.pos+1:]...)
+	// }
+}
+
+func (l *lines) adjustLines() {
+	if l.maxWidth <= 0 {
+		panic("l.maxWidth must be a positive integer")
+	}
+
+	// go through each line and if the line is not at max width and doesn't end with a newline
+	// then check if a next line exists and if it does move its first n characters to the currentLine
+	// where n is maxWidth - len(line.data)
+	//
+	// if the current line is too long then move the overflown data to the next line if it exists
+	// or add a new line and move that data to that line
+	//
+	// if the currentLine is empty then remove it
+
+	// what if a line contains a new line but still has characters after that newline?
+
+	var linesToRemove []int
+
+	for i := 0; i < len(l.data); i++ {
+		ln := &l.data[i]
+
+		var nextLine *line
+		if i != len(l.data)-1 {
+			nextLine = &l.data[i+1]
+		}
+
+		endsWithNewLine := false
+		if len(ln.runes) > 0 {
+			endsWithNewLine = ln.runes[len(ln.runes)-1] == '\n'
+		}
+
+		if !endsWithNewLine && len(ln.runes) < l.maxWidth && nextLine != nil {
+			// move the next line's n characters to the currentLine
+			nextLine := &l.data[i+1]
+			n := min(l.maxWidth-len(ln.runes), len(nextLine.runes))
+
+			// TODO: test for off by 1
+			newRunes := nextLine.runes[:n]
+			nextLine.runes = nextLine.runes[n:]
+			ln.runes = append(ln.runes, newRunes...)
+		} else if len(ln.runes) >= l.maxWidth {
+			overflown := ln.runes[l.maxWidth:]
+			ln.runes = ln.runes[:l.maxWidth]
+
+			if nextLine == nil {
+				nextLine = l.addLine()
+			}
+			nextLine.runes = slices.Insert(nextLine.runes, 0, overflown...)
+		}
+
+		// if a line contains a new line in the middle at index n
+		// create a new line of runes[n:]
+		// the original line would be runes[:n]
+		for {
+			n := runeIndex(ln.runes, '\n')
+			if n == -1 || n == len(ln.runes)-1 {
+				break
+			}
+			afterNewLine := ln.runes[n+1:]
+			ln.runes = ln.runes[:n+1]
+			if nextLine == nil {
+				nextLine = l.addLine()
+			}
+			nextLine.runes = slices.Insert(nextLine.runes, 0, afterNewLine...)
+		}
+
+		if len(ln.runes) == 0 {
+			linesToRemove = append(linesToRemove, i)
+		}
+	}
+
+	for i := len(linesToRemove) - 1; i >= 0; i-- {
+		lineToRemove := linesToRemove[i]
+		l.data = append(l.data[:lineToRemove], l.data[lineToRemove+1:]...)
+	}
+}
+
+// returns -1 if target was not found
+// starts from the end of the string and goes to the beginning
+func runeIndexReverse(runes []rune, target rune) int {
+	for i := len(runes) - 1; i >= 0; i-- {
+		if runes[i] == target {
+			return i
+		}
+	}
+	return -1
+}
+
+// returns -1 if target was not found
+func runeIndex(runes []rune, target rune) int {
+	for i, r := range runes {
+		if r == target {
+			return i
+		}
+	}
+	return -1
+}
+
+func (l *lines) addLine() *line {
+	ln := line{runes: make([]rune, 0, l.maxWidth)}
+	l.data = append(l.data, ln)
+	return &l.data[len(l.data)-1]
+}
+
+func newPromptResizeMsg(height int) tea.Cmd {
+	return func() tea.Msg {
+		return PromptResizeMsg{height}
+	}
+}
+
 func New(width int) Model {
 	if width < 0 {
 		panic("width must not be negative")
@@ -46,6 +226,7 @@ func New(width int) Model {
 		// what happens if it can't grow anymore?
 		// it should page right?
 		viewport: vp,
+		content:  newLines(width),
 	}
 }
 
@@ -64,10 +245,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyRunes:
-			// TODO: check if the line is too long. > m.viewport.Width
-			m.content += string(msg.Runes)
-			m.viewport.SetContent(m.content)
-			log.Println("content:", m.content)
+			m.addContent(msg.Runes)
 
 		case tea.KeyCtrlC:
 			// TODO: TEMPORARY
@@ -78,14 +256,24 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			// TODO: handle the case where a newline / whitespace is sent
 			if k := msg.String(); k == "alt+enter" {
 				log.Println("Prompt entered, content:", m.content)
-				cmd = newPromptEnteredMsg(m.content)
+				cmd = newPromptEnteredMsg(m.content.String())
+
 				// clear content when the prompt is entered
-				m.content = ""
+				m.content.clear()
 			}
 		}
 	}
 
 	return m, cmd
+}
+
+// possibly returns a PromptResizeMsg
+func (m *Model) addContent(runes []rune) tea.Cmd {
+	m.content.writeRunes(runes)
+	m.viewport.SetContent(m.content.String())
+	log.Println("content:", m.content)
+
+	return nil
 }
 
 func (m Model) View() string {
