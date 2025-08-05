@@ -124,6 +124,9 @@ func (l *lines) adjustLines() {
 
 	var linesToRemove []int
 
+	// not using for i := range l.data because we need len(l.data) to be
+	// evaluated each iteration because new lines can be appended
+	// to the array
 	for i := 0; i < len(l.data); i++ {
 		ln := &l.data[i]
 

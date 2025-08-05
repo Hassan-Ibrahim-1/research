@@ -140,7 +140,11 @@ func TestLines_writeRunes(t *testing.T) {
 				{", World\n", 0, []string{"Hello", ", Wor", "ld\n"}},
 				{"foo", 2, []string{"Hello", ", Wor", "ld\n", "foo"}},
 				{"bar", 3, []string{"Hello", ", Wor", "ld\n", "fooba", "r"}},
-				// {"b\naz", 1, []string{"Hello, World\n", "foobarb\n", "az"}},
+				{
+					"b\naz",
+					4,
+					[]string{"Hello", ", Wor", "ld\n", "fooba", "rb\n", "az"},
+				},
 			},
 		},
 	}
