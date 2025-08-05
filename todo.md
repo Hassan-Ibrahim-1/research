@@ -11,9 +11,7 @@ create a prompt area using a viewport.
     - cycle through previous prompts with the arrow keys
 
 Tomorrow
-    -- work through the checklist
-    -- first off implement the View method for prompt
-    -- figure out how to test it
+    - support for whitespace, newlines (enter) and backspace
+    - move only words to next line not individual characters
 
-    move only words to next line not individual characters
-    support for whitespace, newlines (enter) and backspace
+    tabs might be messed up?

@@ -274,10 +274,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			// TODO: TEMPORARY
 			return m, tea.Quit
 
+		case tea.KeyBackspace:
+			m.content.removeChar()
+
 		default:
 			// a control character is sent
-			// TODO: handle the case where a newline / whitespace is sent
-			if k := msg.String(); k == "alt+enter" {
+			if ch := isWhitespace(msg); ch != nil {
+				m.addContent([]rune{*ch})
+			} else if k := msg.String(); k == "alt+enter" {
 				log.Println("Prompt entered, content:", m.content)
 				cmd = newPromptEnteredMsg(m.content.String())
 
@@ -288,6 +292,21 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	return m, cmd
+}
+
+func isWhitespace(msg tea.KeyMsg) *rune {
+	switch msg.Type {
+	case tea.KeySpace:
+		ch := ' '
+		return &ch
+	case tea.KeyEnter:
+		ch := '\n'
+		return &ch
+	case tea.KeyTab:
+		ch := '\t'
+		return &ch
+	}
+	return nil
 }
 
 // possibly returns a PromptResizeMsg
