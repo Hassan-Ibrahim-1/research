@@ -5,10 +5,18 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/viewport"
 
 	tea "github.com/charmbracelet/bubbletea"
 	lg "github.com/charmbracelet/lipgloss"
+)
+
+var (
+	blockCursorStyle = lg.NewStyle().
+				Foreground(lg.Color("0")).
+				Background(lg.Color("15"))
+	blankCursor = []rune(blockCursorStyle.Render(" "))
 )
 
 type Model struct {
@@ -16,10 +24,17 @@ type Model struct {
 	content  lines
 	focused  bool
 
+	Cursor cursor.Model
+
 	promptPrefix   string
 	characterLimit int
 
 	// TODO: placeholder
+}
+
+func (l *lines) cursorPosition() (x, y int) {
+	x = l.data[l.currentLine].pos
+	return x, l.currentLine
 }
 
 // PromptEnteredMsg is sent when alt+enter is pressed when the prompt area is focused.
@@ -66,11 +81,22 @@ type lines struct {
 func (l *lines) String() string {
 	b := strings.Builder{}
 
-	for _, line := range l.data {
+	for i, line := range l.data {
+		runes := line.runes
+		if i == l.currentLine {
+			line.pos = clamp(line.pos, 0, len(line.runes)-1)
+			runes = slices.Clone(line.runes)
+			if len(line.runes) == 0 || line.pos == len(line.runes)-1 {
+				runes = append(runes, blankCursor...)
+			} else {
+				styled := []rune(blockCursorStyle.Render(string(runes[line.pos])))
+				runes = slices.Insert(runes, line.pos, styled...)
+			}
+		}
 		if runesEndsWith(line.runes, []rune("\n")) {
-			b.WriteString(string(line.runes))
+			b.WriteString(string(runes))
 		} else {
-			b.WriteString(string(line.runes) + "\n")
+			b.WriteString(string(runes) + "\n")
 		}
 	}
 

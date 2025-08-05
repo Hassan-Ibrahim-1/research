@@ -14,6 +14,8 @@ Tomorrow
     -- support for whitespace, newlines (enter) and backspace
     - move only words to next line not individual characters
 
+
+    - sanitize runes
     - tabs might be messed up?
     - support for arrow keys
     - cursor
