@@ -151,7 +151,11 @@ func (l *lines) removeChar() {
 	l.adjustLines()
 	// if the character to remove is a new line remove two characters instead
 	if removed == '\n' {
-		l.removeChar()
+		// only remove the next character if it is not a newline
+		ln := &l.data[l.currentLine]
+		if ln.runes[clamp(ln.pos, 0, len(ln.runes)-1)] != '\n' {
+			l.removeChar()
+		}
 	}
 }
 

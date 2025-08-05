@@ -11,11 +11,9 @@ create a prompt area using a viewport.
     - cycle through previous prompts with the arrow keys
 
 Tomorrow
-    - support for whitespace, newlines (enter) and backspace
+    -- support for whitespace, newlines (enter) and backspace
     - move only words to next line not individual characters
 
-    tabs might be messed up?
-    support for arrow keys
-    cursor
-
-    bug when a line just has a newline character
+    - tabs might be messed up?
+    - support for arrow keys
+    - cursor
