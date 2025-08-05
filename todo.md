@@ -16,3 +16,4 @@ Tomorrow
     -- figure out how to test it
 
     move only words to next line not individual characters
+    support for whitespace, newlines (enter) and backspace
