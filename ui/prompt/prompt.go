@@ -67,14 +67,26 @@ func (l *lines) String() string {
 	b := strings.Builder{}
 
 	for _, line := range l.data {
-		b.WriteString(string(line.runes) + "\n")
+		if runesEndsWith(line.runes, []rune("\n")) {
+			b.WriteString(string(line.runes))
+		} else {
+			b.WriteString(string(line.runes) + "\n")
+		}
 	}
 
 	return b.String()
 }
 
+func runesEndsWith(runes []rune, target []rune) bool {
+	if len(runes) == 0 || len(target) > len(runes) {
+		return false
+	}
+	endSlice := runes[len(runes)-len(target):]
+	return slices.Equal(endSlice, target)
+}
+
 func (l *lines) clear() {
-	l.data = nil
+	*l = newLines(l.maxWidth)
 }
 
 func (l *lines) writeRunes(runes []rune) {
@@ -89,11 +101,9 @@ func (l *lines) writeRunes(runes []rune) {
 	// adjustLines will just merge the two, unless this line has a \n
 	// also what if a line is just a newline and i start writing to it.
 	// it should still have that newline in the end right?
-	if len(ln.runes) > 0 && ln.runes[len(ln.runes)-1] == '\n' {
-		ln = l.addLine()
-		// TODO: this is bugged
-		// l.currentLine++
-	}
+	// if len(ln.runes) > 0 && ln.runes[len(ln.runes)-1] == '\n' {
+	// 	ln = l.addLine()
+	// }
 	// ln.runes = append(ln.runes, runes...)
 	ln.addRunes(runes, len(ln.runes))
 
@@ -123,7 +133,6 @@ func (l *lines) writeRunes(runes []rune) {
 }
 
 func (l *lines) removeChar() {
-	log.Println("deleteing a character")
 	ln := &l.data[l.currentLine]
 	if len(ln.runes) == 0 {
 		if l.currentLine == 0 {
@@ -133,9 +142,19 @@ func (l *lines) removeChar() {
 	}
 
 	ln.pos = clamp(ln.pos, 0, len(ln.runes)-1)
+
+	removed := ln.runes[ln.pos]
+
 	ln.runes = slices.Delete(ln.runes, ln.pos, ln.pos+1)
 	ln.pos--
-	l.adjustLines()
+
+	// if the character to remove is a new line remove two characters instead
+	if removed == '\n' {
+		l.removeChar()
+	} else {
+		l.adjustLines()
+	}
+
 }
 
 func clamp(value, min, max int) int {
@@ -240,7 +259,7 @@ func (l *lines) adjustLines() {
 
 func (l *line) addRunes(runes []rune, i int) {
 	l.pos += len(runes)
-	log.Println("current line pos:", l.pos)
+	// log.Println("current line pos:", l.pos)
 	l.runes = slices.Insert(l.runes, i, runes...)
 }
 
@@ -319,11 +338,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case tea.KeyBackspace:
 			m.removeChar()
 
+		case tea.KeySpace:
+			m.addContent([]rune{' '})
+		case tea.KeyEnter:
+			m.addContent([]rune{'\n'})
+
 		default:
 			// a control character is sent
-			if ch := isWhitespace(msg); ch != nil {
-				m.addContent([]rune{*ch})
-			} else if k := msg.String(); k == "alt+enter" {
+			if k := msg.String(); k == "alt+enter" {
 				log.Println("Prompt entered, content:", m.content)
 				cmd = newPromptEnteredMsg(m.content.String())
 
@@ -334,21 +356,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	return m, cmd
-}
-
-func isWhitespace(msg tea.KeyMsg) *rune {
-	switch msg.Type {
-	case tea.KeySpace:
-		ch := ' '
-		return &ch
-	case tea.KeyEnter:
-		ch := '\n'
-		return &ch
-	case tea.KeyTab:
-		ch := '\t'
-		return &ch
-	}
-	return nil
 }
 
 // possibly returns a PromptResizeMsg

@@ -229,8 +229,12 @@ func TestRemoveChar(t *testing.T) {
 		expected    []string
 		currentLine int
 		cursorPos   int
+		deleteCount int
 	}{
-		{[]string{"Hey"}, 128, []string{"He"}, 0, 2},
+		{[]string{"Hey"}, 128, []string{"He"}, 0, 2, 1},
+		{[]string{"Hey"}, 128, []string{"Hy"}, 0, 1, 1},
+		{[]string{"Hey"}, 128, []string{"H"}, 0, 2, 2},
+		{[]string{"Hey\n", "Line2"}, 128, []string{"He"}, 1, 5, 6},
 	}
 
 	for i, tt := range tests {
@@ -240,9 +244,49 @@ func TestRemoveChar(t *testing.T) {
 				maxWidth:    tt.maxWidth,
 				currentLine: tt.currentLine,
 			}
+			// set cursor pos to max for each line
+			for i := range l.data {
+				ln := &l.data[i]
+				ln.pos = len(ln.runes) - 1
+			}
+
 			l.data[l.currentLine].pos = tt.cursorPos
-			l.removeChar()
+			for range tt.deleteCount {
+				l.removeChar()
+			}
 			testLinesEqual(t, l, tt.expected)
+		})
+	}
+}
+
+func TestRuneEndsWith(t *testing.T) {
+	tests := []struct {
+		str      string
+		target   string
+		expected bool
+	}{
+		{"Hey", "ey", true},
+		{"Hey", "y", true},
+		{"Hey", "Hey", true},
+		{"Hey", "oops", false},
+		{"Hey", "ye", false},
+		{"Hey\n", "\n", true},
+		{"Hey\n", "y\n", true},
+		{"Hey\n", "s\n", false},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("test_%d", i+1), func(t *testing.T) {
+			result := runesEndsWith([]rune(tt.str), []rune(tt.target))
+			if result != tt.expected {
+				t.Errorf(
+					"Expected=%t. got=%t. str=%s. target=%s",
+					tt.expected,
+					result,
+					tt.str,
+					tt.target,
+				)
+			}
 		})
 	}
 }
@@ -264,7 +308,7 @@ func testLinesEqual(t *testing.T, l lines, expectedLines []string) {
 		if ln != expected {
 			t.Errorf(
 				"Line [%d] not equal: got=%q. expected=%q",
-				i+1,
+				i,
 				ln,
 				expected,
 			)
