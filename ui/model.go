@@ -105,6 +105,7 @@ func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
 
 		// m.prompt.SetYPosition(viewportHeight + footerHeight)
 		m.prompt.SetFocus(true)
+		m.prompt.SetStyle(lg.NewStyle().BorderStyle(lg.RoundedBorder()))
 
 		m.viewport.Style = lg.NewStyle().BorderStyle(lg.RoundedBorder())
 		// BorderForeground(lg.Color("62")).

@@ -235,6 +235,7 @@ func TestRemoveChar(t *testing.T) {
 		{[]string{"Hey"}, 128, []string{"Hy"}, 0, 1, 1},
 		{[]string{"Hey"}, 128, []string{"H"}, 0, 2, 2},
 		{[]string{"Hey\n", "Line2"}, 128, []string{"He"}, 1, 5, 6},
+		{[]string{"Hey\n", "\n", "s"}, 128, []string{"He"}, 2, 0, 4},
 	}
 
 	for i, tt := range tests {

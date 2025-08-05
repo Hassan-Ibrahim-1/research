@@ -148,13 +148,11 @@ func (l *lines) removeChar() {
 	ln.runes = slices.Delete(ln.runes, ln.pos, ln.pos+1)
 	ln.pos--
 
+	l.adjustLines()
 	// if the character to remove is a new line remove two characters instead
 	if removed == '\n' {
 		l.removeChar()
-	} else {
-		l.adjustLines()
 	}
-
 }
 
 func clamp(value, min, max int) int {

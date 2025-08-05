@@ -17,3 +17,5 @@ Tomorrow
     tabs might be messed up?
     support for arrow keys
     cursor
+
+    bug when a line just has a newline character
