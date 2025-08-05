@@ -124,7 +124,7 @@ func (l *lines) adjustLines() {
 
 	var linesToRemove []int
 
-	for i := range l.data {
+	for i := 0; i < len(l.data); i++ {
 		ln := &l.data[i]
 
 		var nextLine *line

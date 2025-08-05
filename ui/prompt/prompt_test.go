@@ -2,10 +2,12 @@ package prompt
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
 // TODO: test lines.String()
+// TODO: fuzz prompt. it should never crash under any circumstance
 
 func TestLines_writeRunes(t *testing.T) {
 	type Action struct {
@@ -198,8 +200,8 @@ func testLinesEqual(t *testing.T, l lines, expectedLines []string) {
 			"Lines length not equal: expected=%d\n got=%d\nLines not equal: got=%+v. expected=%+v",
 			len(expectedLines),
 			len(l.data),
-			linesToStrings(l.data),
-			expectedLines,
+			fmtStringSlice(linesToStrings(l.data)),
+			fmtStringSlice(expectedLines),
 		)
 		return
 	}
@@ -208,7 +210,7 @@ func testLinesEqual(t *testing.T, l lines, expectedLines []string) {
 		ln := string(l.data[i].runes)
 		if ln != expected {
 			t.Errorf(
-				"Line [%d] not equal: got=%s. expected=%s",
+				"Line [%d] not equal: got=%q. expected=%q",
 				i+1,
 				ln,
 				expected,
@@ -231,4 +233,16 @@ func linesToStrings(lns []line) []string {
 		s[i] = string(ln.runes)
 	}
 	return s
+}
+
+func fmtStringSlice(s []string) string {
+	b := strings.Builder{}
+	b.WriteString("[\n")
+
+	for _, str := range s {
+		b.WriteString(fmt.Sprintf("    %q\n", str))
+	}
+
+	b.WriteString("]")
+	return b.String()
 }
