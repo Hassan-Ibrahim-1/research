@@ -74,6 +74,7 @@ func (l *lines) writeRunes(runes []rune) {
 	if len(l.data) == 0 {
 		l.data = append(l.data, line{})
 	}
+
 	ln := &l.data[l.currentLine]
 
 	// this might not be what i want???
@@ -88,7 +89,16 @@ func (l *lines) writeRunes(runes []rune) {
 	}
 	ln.runes = append(ln.runes, runes...)
 
+	previousLen := len(l.data)
+	atEnd := l.currentLine == len(l.data)-1
+
 	l.adjustLines()
+
+	if atEnd && len(l.data) > previousLen {
+		l.currentLine++
+	} else if atEnd && len(l.data) < previousLen {
+		l.currentLine--
+	}
 
 	// if the current line is full then start writing to the next line
 	// but if writing in the middle of a line and the line starts overflowing
