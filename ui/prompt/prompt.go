@@ -43,10 +43,17 @@ type line struct {
 	pos   int
 }
 
+func newLine(maxWidth int) line {
+	return line{
+		runes: make([]rune, 0, maxWidth),
+		pos:   -1,
+	}
+}
+
 func newLines(maxWidth int) lines {
 	return lines{
 		maxWidth: maxWidth,
-		data:     []line{line{runes: make([]rune, 0)}},
+		data:     []line{newLine(maxWidth)},
 	}
 }
 
@@ -72,7 +79,7 @@ func (l *lines) clear() {
 
 func (l *lines) writeRunes(runes []rune) {
 	if len(l.data) == 0 {
-		l.data = append(l.data, line{})
+		l.addLine()
 	}
 
 	ln := &l.data[l.currentLine]
@@ -87,7 +94,8 @@ func (l *lines) writeRunes(runes []rune) {
 		// TODO: this is bugged
 		// l.currentLine++
 	}
-	ln.runes = append(ln.runes, runes...)
+	// ln.runes = append(ln.runes, runes...)
+	ln.addRunes(runes, len(ln.runes))
 
 	previousLen := len(l.data)
 	atEnd := l.currentLine == len(l.data)-1
@@ -115,10 +123,29 @@ func (l *lines) writeRunes(runes []rune) {
 }
 
 func (l *lines) removeChar() {
-	// ln := l.data[l.currentLine]
-	// if ln.pos < len(ln.runes) {
-	// 	ln.runes = append(ln.runes[:ln.pos], ln.runes[ln.pos+1:]...)
-	// }
+	log.Println("deleteing a character")
+	ln := &l.data[l.currentLine]
+	if len(ln.runes) == 0 {
+		if l.currentLine == 0 {
+			return
+		}
+		return
+	}
+
+	ln.pos = clamp(ln.pos, 0, len(ln.runes)-1)
+	ln.runes = slices.Delete(ln.runes, ln.pos, ln.pos+1)
+	ln.pos--
+	l.adjustLines()
+}
+
+func clamp(value, min, max int) int {
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+	return value
 }
 
 func (l *lines) adjustLines() {
@@ -163,7 +190,8 @@ func (l *lines) adjustLines() {
 			// TODO: test for off by 1
 			newRunes := nextLine.runes[:n]
 			nextLine.runes = nextLine.runes[n:]
-			ln.runes = append(ln.runes, newRunes...)
+			ln.addRunes(newRunes, len(ln.runes))
+			// ln.runes = append(ln.runes, newRunes...)
 		} else if len(ln.runes) >= l.maxWidth {
 			overflown := ln.runes[l.maxWidth:]
 			ln.runes = ln.runes[:l.maxWidth]
@@ -171,7 +199,7 @@ func (l *lines) adjustLines() {
 			if nextLine == nil {
 				nextLine = l.addLine()
 			}
-			nextLine.runes = slices.Insert(nextLine.runes, 0, overflown...)
+			nextLine.addRunes(overflown, 0)
 		}
 
 		// if a line contains a new line in the middle at index n
@@ -187,7 +215,8 @@ func (l *lines) adjustLines() {
 			if nextLine == nil {
 				nextLine = l.addLine()
 			}
-			nextLine.runes = slices.Insert(nextLine.runes, 0, afterNewLine...)
+			nextLine.addRunes(afterNewLine, 0)
+			// nextLine.runes = slices.Insert(nextLine.runes, 0, afterNewLine...)
 		}
 
 		if len(ln.runes) == 0 {
@@ -197,8 +226,22 @@ func (l *lines) adjustLines() {
 
 	for i := len(linesToRemove) - 1; i >= 0; i-- {
 		lineToRemove := linesToRemove[i]
+		// can't remove the first line ever
+		if lineToRemove == 0 {
+			continue
+		}
+
+		if lineToRemove == l.currentLine {
+			l.currentLine--
+		}
 		l.data = slices.Delete(l.data, lineToRemove, lineToRemove+1)
 	}
+}
+
+func (l *line) addRunes(runes []rune, i int) {
+	l.pos += len(runes)
+	log.Println("current line pos:", l.pos)
+	l.runes = slices.Insert(l.runes, i, runes...)
 }
 
 // returns -1 if target was not found
@@ -223,8 +266,7 @@ func runeIndex(runes []rune, target rune) int {
 }
 
 func (l *lines) addLine() *line {
-	ln := line{runes: make([]rune, 0, l.maxWidth)}
-	l.data = append(l.data, ln)
+	l.data = append(l.data, newLine(l.maxWidth))
 	return &l.data[len(l.data)-1]
 }
 
@@ -275,7 +317,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case tea.KeyBackspace:
-			m.content.removeChar()
+			m.removeChar()
 
 		default:
 			// a control character is sent
@@ -316,6 +358,11 @@ func (m *Model) addContent(runes []rune) tea.Cmd {
 	log.Println("content:", m.content)
 
 	return nil
+}
+
+func (m *Model) removeChar() {
+	m.content.removeChar()
+	m.viewport.SetContent(m.content.String())
 }
 
 func (m Model) View() string {

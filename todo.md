@@ -15,3 +15,4 @@ Tomorrow
     - move only words to next line not individual characters
 
     tabs might be messed up?
+    support for arrow keys
