@@ -46,6 +46,7 @@ type line struct {
 func newLines(maxWidth int) lines {
 	return lines{
 		maxWidth: maxWidth,
+		data:     []line{line{runes: make([]rune, 0)}},
 	}
 }
 
@@ -59,7 +60,7 @@ func (l *lines) String() string {
 	b := strings.Builder{}
 
 	for _, line := range l.data {
-		b.WriteString(string(line.runes))
+		b.WriteString(string(line.runes) + "\n")
 	}
 
 	return b.String()
@@ -70,6 +71,9 @@ func (l *lines) clear() {
 }
 
 func (l *lines) writeRunes(runes []rune) {
+	if len(l.data) == 0 {
+		l.data = append(l.data, line{})
+	}
 	ln := &l.data[l.currentLine]
 
 	// this might not be what i want???
@@ -79,7 +83,8 @@ func (l *lines) writeRunes(runes []rune) {
 	// it should still have that newline in the end right?
 	if len(ln.runes) > 0 && ln.runes[len(ln.runes)-1] == '\n' {
 		ln = l.addLine()
-		l.currentLine++
+		// TODO: this is bugged
+		// l.currentLine++
 	}
 	ln.runes = append(ln.runes, runes...)
 
@@ -224,7 +229,7 @@ func New(width int) Model {
 		panic("width must not be negative")
 	}
 
-	vp := viewport.New(width, 1)
+	vp := viewport.New(width, 20)
 	// vp.YPosition = ypos
 
 	return Model{

@@ -74,16 +74,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	if !m.ready {
-		return "\n Initializing..."
-	}
-	return fmt.Sprintf(
-		"%s\n%s\n%s\n%s",
-		m.headerView(),
-		m.chatView(),
-		m.footerView(),
-		m.promptView(),
-	)
+	return m.promptView()
+	// if !m.ready {
+	// 	return "\n Initializing..."
+	// }
+	// return fmt.Sprintf(
+	// 	"%s\n%s\n%s\n%s",
+	// 	m.headerView(),
+	// 	m.chatView(),
+	// 	m.footerView(),
+	// 	m.promptView(),
+	// )
 }
 
 func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
@@ -94,7 +95,7 @@ func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
 	viewportWidth := ws.Width
 
 	if !m.ready {
-		m.prompt = prompt.New(viewportWidth)
+		m.prompt = prompt.New(10)
 
 		viewportHeight :=
 			ws.Height - (verticalMarginHeight + lg.Height(m.promptView()))
@@ -102,7 +103,7 @@ func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
 		m.viewport = viewport.New(viewportWidth, viewportHeight)
 		m.viewport.YPosition = headerHeight
 
-		m.prompt.SetYPosition(viewportHeight + footerHeight)
+		// m.prompt.SetYPosition(viewportHeight + footerHeight)
 		m.prompt.SetFocus(true)
 
 		m.viewport.Style = lg.NewStyle().BorderStyle(lg.RoundedBorder())

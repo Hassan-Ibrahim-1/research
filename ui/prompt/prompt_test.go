@@ -198,6 +198,30 @@ func TestLines_adjustLines(t *testing.T) {
 	}
 }
 
+func TestLinesString(t *testing.T) {
+	tests := []struct {
+		lines    []string
+		maxWidth int
+		expected string
+	}{
+		{[]string{"Hello World"}, 128, "Hello World\n"},
+		{[]string{"Hello World"}, 5, "Hello\n Worl\nd\n"},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("test_%d", i), func(t *testing.T) {
+			l := lines{
+				data:     linesFromStrings(tt.lines),
+				maxWidth: tt.maxWidth,
+			}
+			l.adjustLines()
+			if str := l.String(); str != tt.expected {
+				t.Errorf("expected=%q. got=%q", tt.expected, str)
+			}
+		})
+	}
+}
+
 func testLinesEqual(t *testing.T, l lines, expectedLines []string) {
 	if len(l.data) != len(expectedLines) {
 		t.Errorf(
@@ -221,6 +245,33 @@ func testLinesEqual(t *testing.T, l lines, expectedLines []string) {
 			)
 		}
 	}
+}
+
+func FuzzAdjustLines(f *testing.F) {
+	f.Add("Hello, World", "123123v!@", "12\n3")
+	f.Add("Hello, World\n", "foo\n", "bar")
+	f.Add("Hello,\n\n World\n", "f\noo\n", "bar")
+
+	f.Fuzz(func(t *testing.T, s1, s2, s3 string) {
+		l := lines{
+			data:     linesFromStrings([]string{s1, s2, s3}),
+			maxWidth: 128,
+		}
+		l.adjustLines()
+	})
+}
+
+func FuzzWriteRunes(f *testing.F) {
+	f.Add("Hello, World", "123123v!@", "12\n3")
+	f.Add("Hello, World\n", "foo\n", "bar")
+	f.Add("Hello,\n\n World\n", "f\noo\n", "bar")
+
+	f.Fuzz(func(t *testing.T, s1, s2, s3 string) {
+		l := newLines(128)
+		l.writeRunes([]rune(s1))
+		l.writeRunes([]rune(s2))
+		l.writeRunes([]rune(s3))
+	})
 }
 
 func linesFromStrings(s []string) []line {
