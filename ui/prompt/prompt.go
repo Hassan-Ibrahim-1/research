@@ -84,15 +84,23 @@ func (l *lines) String() string {
 	for i, line := range l.data {
 		runes := line.runes
 		if i == l.currentLine {
+			// add cursor
 			line.pos = clamp(line.pos, 0, len(line.runes)-1)
 			runes = slices.Clone(line.runes)
 			if len(line.runes) == 0 || line.pos == len(line.runes)-1 {
+				// add cursor to end
+				log.Println("cursor at end")
 				runes = append(runes, blankCursor...)
 			} else {
+				log.Println("cursor in between")
+				// add cursor in the middle of the line
 				styled := []rune(blockCursorStyle.Render(string(runes[line.pos])))
+				log.Println("styled:", styled)
 				runes = slices.Insert(runes, line.pos, styled...)
+				// runes[line.pos] = styled[0]
 			}
 		}
+
 		if runesEndsWith(line.runes, []rune("\n")) {
 			b.WriteString(string(runes))
 		} else {
@@ -371,6 +379,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case tea.KeyEnter:
 			m.addContent([]rune{'\n'})
 
+		case tea.KeyRight, tea.KeyLeft, tea.KeyUp, tea.KeyDown:
+			m.handleArrowKey(msg)
+
 		default:
 			// a control character is sent
 			if k := msg.String(); k == "alt+enter" {
@@ -427,4 +438,29 @@ func (m *Model) Height() int {
 
 func (m *Model) SetYPosition(ypos int) {
 	m.viewport.YPosition = ypos
+}
+
+func (m *Model) handleArrowKey(key tea.KeyMsg) {
+	ln := &m.content.data[m.content.currentLine]
+	lineLength := len(ln.runes)
+
+	switch key.Type {
+	case tea.KeyRight:
+		if ln.pos < lineLength {
+			log.Println("key right")
+			ln.pos++
+		} else {
+
+		}
+	case tea.KeyLeft:
+		if ln.pos >= 0 {
+			log.Println("key left")
+			ln.pos--
+		} else {
+
+		}
+	}
+
+	// redraw
+	m.viewport.SetContent(m.content.String())
 }
