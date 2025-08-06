@@ -86,18 +86,29 @@ func (l *lines) String() string {
 		if i == l.currentLine {
 			// add cursor
 			runes = slices.Clone(line.runes)
-			line.pos = clamp(line.pos, -1, len(line.runes)-1)
-			if len(line.runes) == 0 || line.pos == len(line.runes)-1 {
+			line.pos = clamp(line.pos, -1, len(runes)-1)
+			if len(runes) == 0 || line.pos == len(runes)-1 {
 				// add cursor to end
 				log.Println("cursor at end")
+				if len(runes) != 0 && runes[len(runes)-1] == '\n' {
+					log.Println("replacing rune")
+					runes = runes[:len(runes)]
+				}
 				runes = append(runes, blankCursor...)
 			} else {
 				log.Println("cursor in between")
 				// add cursor in the middle of the line
-				styled := []rune(blockCursorStyle.Render(string(runes[line.pos+1])))
+				if line.pos != -1 && runes[line.pos] == '\n' {
+					runes = slices.Delete(runes, line.pos, line.pos+1)
+				}
+				pos := line.pos + 1
+				// if runes[max(0, line.pos)] == '\n' {
+				// 	pos -= 1
+				// }
+				styled := []rune(blockCursorStyle.Render(string(runes[pos])))
 				log.Println("styled:", styled)
-				runes[line.pos+1] = styled[0]
-				runes = slices.Insert(runes, line.pos+2, styled[1:]...)
+				runes[pos] = styled[0]
+				runes = slices.Insert(runes, pos+1, styled[1:]...)
 			}
 		}
 
@@ -380,8 +391,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 func (m *Model) addContent(runes []rune) tea.Cmd {
 	m.content.writeRunes(runes)
 	m.viewport.SetContent(m.content.String())
-	log.Println("content:", m.content)
 
+	log.Printf(
+		"cursor pos: (%d, %d)\n",
+		m.content.data[m.content.currentLine].pos,
+		m.content.currentLine,
+	)
 	return nil
 }
 
@@ -425,20 +440,30 @@ func (m *Model) handleArrowKey(key tea.KeyMsg) {
 
 	switch key.Type {
 	case tea.KeyRight:
-		if ln.pos < lineLength {
+		if ln.pos < lineLength-1 {
 			log.Println("key right")
 			ln.pos++
-		} else {
-
+		} else if m.content.currentLine < len(m.content.data)-1 {
+			m.content.currentLine++
+			newLine := &m.content.data[m.content.currentLine]
+			newLine.pos = 0
 		}
 	case tea.KeyLeft:
 		if ln.pos >= 0 {
 			log.Println("key left")
 			ln.pos--
-		} else {
-
+		} else if m.content.currentLine > 0 {
+			m.content.currentLine--
+			newLine := &m.content.data[m.content.currentLine]
+			newLine.pos = len(newLine.runes) - 3
 		}
 	}
+
+	log.Printf(
+		"arrow key: cursor pos: (%d, %d)\n",
+		m.content.data[m.content.currentLine].pos,
+		m.content.currentLine,
+	)
 
 	// redraw
 	m.viewport.SetContent(m.content.String())
