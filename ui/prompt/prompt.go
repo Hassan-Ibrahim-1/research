@@ -42,7 +42,7 @@ func (l *line) addRunes(runes []rune, i int) {
 	}
 
 	l.pos += len(runes)
-	// log.Println("current line pos:", l.pos)
+
 	if i == len(l.runes) {
 		l.runes = append(l.runes, runes...)
 	} else {
@@ -75,7 +75,7 @@ func New(width int) Model {
 	return Model{
 		promptPrefix:   "> ",
 		characterLimit: 1024,
-		maxWidth:       width,
+		maxWidth:       width - 3,
 		// height is meant to be growable
 		// what happens if it can't grow anymore?
 		// it should page right?
@@ -127,10 +127,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case tea.KeyEnter:
 			m.addLine()
 			m.currentLine++
-			m.viewport.SetContent(m.String())
+			m.redraw()
 
-		// case tea.KeyRight, tea.KeyLeft, tea.KeyUp, tea.KeyDown:
-		// 	m.handleArrowKey(msg)
+		case tea.KeyRight, tea.KeyLeft, tea.KeyUp, tea.KeyDown:
+			m.handleArrowKeys(msg)
 
 		default:
 			// a control character is sent
@@ -147,6 +147,42 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m *Model) handleArrowKeys(key tea.KeyMsg) {
+	ln := m.lineAt(m.currentLine)
+
+	switch key.Type {
+	case tea.KeyRight:
+		if ln.pos < len(ln.runes) {
+			ln.pos++
+			if ln.pos == 49 {
+				panic("49 at handleArrowKeys")
+			}
+		} else if m.currentLine < len(m.lines)-1 {
+			m.currentLine++
+			m.lineAt(m.currentLine).pos = 0
+		}
+	case tea.KeyLeft:
+		if ln.pos > 0 {
+			ln.pos--
+		} else if m.currentLine > 0 {
+			m.currentLine--
+		}
+	}
+
+	px, py := m.cursorPos()
+	log.Printf("arrow key pos: (%d, %d)\n", px, py)
+
+	m.redraw()
+}
+
+func (m *Model) cursorPos() (x, y int) {
+	return m.lineAt(m.currentLine).pos, m.currentLine
+}
+
+func (m *Model) redraw() {
+	m.viewport.SetContent(m.String())
+}
+
 func (m *Model) String() string {
 	b := strings.Builder{}
 	for i, ln := range m.lines {
@@ -160,6 +196,9 @@ func (m *Model) String() string {
 				runes = append(runes, blankCursor...)
 			} else {
 				// render at ln.pos
+				if ln.pos >= len(runes) {
+					log.Println("whoops")
+				}
 				styled := []rune(blockCursorStyle.Render(string(runes[ln.pos])))
 				runes[ln.pos] = styled[0]
 				runes = slices.Insert(runes, ln.pos+1, styled[1:]...)
@@ -207,12 +246,12 @@ func (m *Model) SetYPosition(ypos int) {
 // possibly returns a PromptResizeMsg
 func (m *Model) addContent(runes []rune) tea.Cmd {
 	m.writeRunes(runes)
-	m.viewport.SetContent(m.String())
+	m.redraw()
 
+	px, py := m.cursorPos()
 	log.Printf(
 		"cursor pos: (%d, %d)\n",
-		m.lineAt(m.currentLine).pos,
-		m.currentLine,
+		px, py,
 	)
 	return nil
 }
@@ -221,6 +260,7 @@ func (m *Model) writeRunes(runes []rune) {
 	ln := m.lineAt(m.currentLine)
 	ln.addRunes(runes, ln.pos)
 	m.adjustLines()
+	log.Println("brea")
 }
 
 func (m *Model) removeChar() {
@@ -228,7 +268,8 @@ func (m *Model) removeChar() {
 
 	// deferred because of a possible early return
 	defer func() {
-		m.viewport.SetContent(m.String())
+		m.adjustLines()
+		m.redraw()
 	}()
 
 	if ln.pos == 0 {
@@ -263,14 +304,31 @@ func (m *Model) adjustLines() {
 			if i < len(m.lines)-1 {
 				log.Println("a new line already exists")
 				nextLine = m.lineAt(i + 1)
+
+				if ln.pos >= len(ln.runes) && m.currentLine == i {
+					// if inserting at the end move the cursor down
+					m.currentLine++
+					nextLine.pos = 0
+				}
+
 			} else {
-				log.Println("adding newline")
 				nextLine = m.addLine()
-				m.currentLine++
+				if len(ln.runes) == ln.pos {
+					m.currentLine++
+				}
+			}
+
+			// because we're removing extra characters set ln.pos to the new len
+			if ln.pos >= len(ln.runes) {
+				ln.pos = len(ln.runes)
 			}
 
 			nextLine.addRunes(overflown, 0)
 		}
+	}
+	lastLine := m.lineAt(len(m.lines) - 1)
+	if len(lastLine.runes) == 0 && m.currentLine != len(m.lines)-1 {
+		m.lines = slices.Delete(m.lines, len(m.lines)-1, len(m.lines))
 	}
 }
 
