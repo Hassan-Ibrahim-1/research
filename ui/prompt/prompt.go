@@ -129,6 +129,17 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.addContent([]rune{' '})
 		case tea.KeyEnter:
 			m.insertLine()
+
+			// move characters after where enter was pressed to the next line
+			ln := m.lineAt(m.currentLine)
+			nextLine := m.lineAt(m.currentLine + 1)
+			if ln.pos < len(ln.runes)-1 {
+				toMove := ln.runes[ln.pos:]
+				ln.runes = ln.runes[:ln.pos]
+				nextLine.addRunes(toMove, 0)
+				nextLine.pos = 0
+			}
+
 			m.currentLine++
 			m.redraw()
 
