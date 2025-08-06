@@ -104,7 +104,7 @@ func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
 		m.viewport.YPosition = headerHeight
 
 		// m.prompt.SetYPosition(viewportHeight + footerHeight)
-		m.prompt.SetFocus(true)
+		m.prompt.Focus()
 		m.prompt.SetStyle(lg.NewStyle().BorderStyle(lg.RoundedBorder()))
 
 		m.viewport.Style = lg.NewStyle().BorderStyle(lg.RoundedBorder())

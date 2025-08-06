@@ -1,0 +1,473 @@
+package prompt
+
+/*
+
+import (
+	"log"
+	"slices"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/charmbracelet/bubbles/viewport"
+
+	tea "github.com/charmbracelet/bubbletea"
+	lg "github.com/charmbracelet/lipgloss"
+)
+
+var (
+	blockCursorStyle = lg.NewStyle().
+				Foreground(lg.Color("0")).
+				Background(lg.Color("15"))
+	blankCursor = []rune(blockCursorStyle.Render(" "))
+)
+
+type Model struct {
+	viewport viewport.Model
+	content  lines
+	focused  bool
+
+	Cursor cursor.Model
+
+	promptPrefix   string
+	characterLimit int
+
+	// TODO: placeholder
+}
+
+func (l *lines) cursorPosition() (x, y int) {
+	x = l.data[l.currentLine].pos
+	return x, l.currentLine
+}
+
+// PromptEnteredMsg is sent when alt+enter is pressed when the prompt area is focused.
+type PromptEnteredMsg struct {
+	Content string
+}
+
+func newPromptEnteredMsg(content string) tea.Cmd {
+	return func() tea.Msg {
+		return PromptEnteredMsg{content}
+	}
+}
+
+// PromptResizeMsg is sent when the prompt shrinks or grows
+type PromptResizeMsg struct {
+	Height int
+}
+
+type line struct {
+	runes []rune
+	pos   int
+}
+
+func newLine(maxWidth int) line {
+	return line{
+		runes: make([]rune, 0, maxWidth),
+		pos:   -1,
+	}
+}
+
+func newLines(maxWidth int) lines {
+	return lines{
+		maxWidth: maxWidth,
+		data:     []line{newLine(maxWidth)},
+	}
+}
+
+type lines struct {
+	data        []line
+	maxWidth    int
+	currentLine int
+}
+
+func (l *lines) String() string {
+	b := strings.Builder{}
+
+	for i, line := range l.data {
+		runes := line.runes
+		if i == l.currentLine {
+			// add cursor
+			runes = slices.Clone(line.runes)
+			line.pos = clamp(line.pos, -1, len(runes)-1)
+			if len(runes) == 0 || line.pos == len(runes)-1 {
+				// add cursor to end
+				log.Println("cursor at end")
+				if len(runes) != 0 && runes[len(runes)-1] == '\n' {
+					log.Println("replacing rune")
+					runes = runes[:len(runes)]
+				}
+				runes = append(runes, blankCursor...)
+			} else {
+				log.Println("cursor in between")
+				// add cursor in the middle of the line
+				if line.pos != -1 && runes[line.pos] == '\n' {
+					runes = slices.Delete(runes, line.pos, line.pos+1)
+				}
+				pos := line.pos + 1
+				// if runes[max(0, line.pos)] == '\n' {
+				// 	pos -= 1
+				// }
+				styled := []rune(blockCursorStyle.Render(string(runes[pos])))
+				log.Println("styled:", styled)
+				runes[pos] = styled[0]
+				runes = slices.Insert(runes, pos+1, styled[1:]...)
+			}
+		}
+
+		if runesEndsWith(line.runes, []rune("\n")) {
+			b.WriteString(string(runes))
+		} else {
+			b.WriteString(string(runes) + "\n")
+		}
+	}
+
+	return b.String()
+}
+
+func runesEndsWith(runes []rune, target []rune) bool {
+	if len(runes) == 0 || len(target) > len(runes) {
+		return false
+	}
+	endSlice := runes[len(runes)-len(target):]
+	return slices.Equal(endSlice, target)
+}
+
+func (l *lines) clear() {
+	*l = newLines(l.maxWidth)
+}
+
+func (l *lines) writeRunes(runes []rune) {
+	if len(l.data) == 0 {
+		l.addLine()
+	}
+
+	ln := &l.data[l.currentLine]
+
+	ln.pos = clamp(ln.pos, -1, len(ln.runes)-1)
+	ln.addRunes(runes, ln.pos+1)
+
+	previousLen := len(l.data)
+	atEnd := l.currentLine == len(l.data)-1
+
+	l.adjustLines()
+
+	if atEnd && len(l.data) > previousLen {
+		l.currentLine++
+	} else if atEnd && len(l.data) < previousLen {
+		l.currentLine--
+	}
+}
+
+func (l *lines) removeChar() {
+	ln := &l.data[l.currentLine]
+	if len(ln.runes) == 0 {
+		if l.currentLine == 0 {
+			return
+		}
+		return
+	}
+
+	ln.pos = clamp(ln.pos, 0, len(ln.runes)-1)
+
+	// removed := ln.runes[ln.pos]
+
+	ln.runes = slices.Delete(ln.runes, ln.pos, ln.pos+1)
+	ln.pos--
+
+	l.adjustLines()
+	// if the character to remove is a new line remove two characters instead
+	// if removed == '\n' {
+	// 	// only remove the next character if it is not a newline
+	// 	ln := &l.data[l.currentLine]
+	// 	if ln.runes[clamp(ln.pos, 0, len(ln.runes)-1)] != '\n' {
+	// 		l.removeChar()
+	// 	}
+	// }
+}
+
+func clamp(value, min, max int) int {
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+	return value
+}
+
+func (l *lines) adjustLines() {
+	if l.maxWidth <= 0 {
+		panic("l.maxWidth must be a positive integer")
+	}
+
+	// go through each line and if the line is not at max width and doesn't end with a newline
+	// then check if a next line exists and if it does move its first n characters to the currentLine
+	// where n is maxWidth - len(line.data)
+	//
+	// if the current line is too long then move the overflown data to the next line if it exists
+	// or add a new line and move that data to that line
+	//
+	// if the currentLine is empty then remove it
+
+	// what if a line contains a new line but still has characters after that newline?
+
+	var linesToRemove []int
+
+	// not using for i := range l.data because we need len(l.data) to be
+	// evaluated each iteration because new lines can be appended
+	// to the array
+	for i := 0; i < len(l.data); i++ {
+		ln := &l.data[i]
+
+		var nextLine *line
+		if i != len(l.data)-1 {
+			nextLine = &l.data[i+1]
+		}
+
+		endsWithNewLine := false
+		if len(ln.runes) > 0 {
+			endsWithNewLine = ln.runes[len(ln.runes)-1] == '\n'
+		}
+
+		if !endsWithNewLine && len(ln.runes) < l.maxWidth && nextLine != nil {
+			// move the next line's n characters to the currentLine
+			nextLine := &l.data[i+1]
+			n := min(l.maxWidth-len(ln.runes), len(nextLine.runes))
+
+			// TODO: test for off by 1
+			newRunes := nextLine.runes[:n]
+			nextLine.runes = nextLine.runes[n:]
+			ln.addRunes(newRunes, len(ln.runes))
+			// ln.runes = append(ln.runes, newRunes...)
+		} else if len(ln.runes) >= l.maxWidth {
+			overflown := ln.runes[l.maxWidth:]
+			ln.runes = ln.runes[:l.maxWidth]
+
+			if nextLine == nil {
+				nextLine = l.addLine()
+			}
+			nextLine.addRunes(overflown, 0)
+		}
+
+		// if a line contains a new line in the middle at index n
+		// create a new line of runes[n:]
+		// the original line would be runes[:n]
+		for {
+			n := runeIndex(ln.runes, '\n')
+			if n == -1 || n == len(ln.runes)-1 {
+				break
+			}
+			afterNewLine := ln.runes[n+1:]
+			ln.runes = ln.runes[:n+1]
+			if nextLine == nil {
+				nextLine = l.addLine()
+			}
+			nextLine.addRunes(afterNewLine, 0)
+			// nextLine.runes = slices.Insert(nextLine.runes, 0, afterNewLine...)
+		}
+
+		if len(ln.runes) == 0 {
+			linesToRemove = append(linesToRemove, i)
+		}
+	}
+
+	for i := len(linesToRemove) - 1; i >= 0; i-- {
+		lineToRemove := linesToRemove[i]
+		// can't remove the first line ever
+		if lineToRemove == 0 {
+			continue
+		}
+
+		if lineToRemove == l.currentLine {
+			l.currentLine--
+		}
+		l.data = slices.Delete(l.data, lineToRemove, lineToRemove+1)
+	}
+}
+
+func (l *line) addRunes(runes []rune, i int) {
+	l.pos += len(runes)
+	// log.Println("current line pos:", l.pos)
+	l.runes = slices.Insert(l.runes, i, runes...)
+}
+
+// returns -1 if target was not found
+// starts from the end of the string and goes to the beginning
+func runeIndexReverse(runes []rune, target rune) int {
+	for i := len(runes) - 1; i >= 0; i-- {
+		if runes[i] == target {
+			return i
+		}
+	}
+	return -1
+}
+
+// returns -1 if target was not found
+func runeIndex(runes []rune, target rune) int {
+	for i, r := range runes {
+		if r == target {
+			return i
+		}
+	}
+	return -1
+}
+
+func (l *lines) addLine() *line {
+	l.data = append(l.data, newLine(l.maxWidth))
+	return &l.data[len(l.data)-1]
+}
+
+func newPromptResizeMsg(height int) tea.Cmd {
+	return func() tea.Msg {
+		return PromptResizeMsg{height}
+	}
+}
+
+func New(width int) Model {
+	if width < 0 {
+		panic("width must not be negative")
+	}
+
+	vp := viewport.New(width, 20)
+	// vp.YPosition = ypos
+
+	return Model{
+		promptPrefix:   "> ",
+		characterLimit: 1024,
+		// height is meant to be growable
+		// what happens if it can't grow anymore?
+		// it should page right?
+		viewport: vp,
+		content:  newLines(width),
+	}
+}
+
+func (m Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	if !m.focused {
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyRunes:
+			m.addContent(msg.Runes)
+
+		case tea.KeyCtrlC:
+			// TODO: TEMPORARY
+			return m, tea.Quit
+
+		case tea.KeyBackspace:
+			m.removeChar()
+
+		case tea.KeySpace:
+			m.addContent([]rune{' '})
+		case tea.KeyEnter:
+			m.addContent([]rune{'\n'})
+
+		case tea.KeyRight, tea.KeyLeft, tea.KeyUp, tea.KeyDown:
+			m.handleArrowKey(msg)
+
+		default:
+			// a control character is sent
+			if k := msg.String(); k == "alt+enter" {
+				log.Println("Prompt entered, content:", m.content)
+				cmd = newPromptEnteredMsg(m.content.String())
+
+				// clear content when the prompt is entered
+				m.content.clear()
+			}
+		}
+	}
+
+	return m, cmd
+}
+
+// possibly returns a PromptResizeMsg
+func (m *Model) addContent(runes []rune) tea.Cmd {
+	m.content.writeRunes(runes)
+	m.viewport.SetContent(m.content.String())
+
+	log.Printf(
+		"cursor pos: (%d, %d)\n",
+		m.content.data[m.content.currentLine].pos,
+		m.content.currentLine,
+	)
+	return nil
+}
+
+func (m *Model) removeChar() {
+	m.content.removeChar()
+	m.viewport.SetContent(m.content.String())
+}
+
+func (m Model) View() string {
+	// TODO: draw cursor
+	return m.viewport.View()
+}
+
+func (m *Model) SetFocus(f bool) {
+	m.focused = f
+}
+
+func (m *Model) GetFocus() bool {
+	return m.focused
+}
+
+func (m *Model) ToggleFocus() {
+	m.focused = !m.focused
+}
+
+func (m *Model) SetStyle(style lg.Style) {
+	m.viewport.Style = style
+}
+
+func (m *Model) Height() int {
+	return m.viewport.Height
+}
+
+func (m *Model) SetYPosition(ypos int) {
+	m.viewport.YPosition = ypos
+}
+
+func (m *Model) handleArrowKey(key tea.KeyMsg) {
+	ln := &m.content.data[m.content.currentLine]
+	lineLength := len(ln.runes)
+
+	switch key.Type {
+	case tea.KeyRight:
+		if ln.pos < lineLength-1 {
+			log.Println("key right")
+			ln.pos++
+		} else if m.content.currentLine < len(m.content.data)-1 {
+			m.content.currentLine++
+			newLine := &m.content.data[m.content.currentLine]
+			newLine.pos = 0
+		}
+	case tea.KeyLeft:
+		if ln.pos >= 0 {
+			log.Println("key left")
+			ln.pos--
+		} else if m.content.currentLine > 0 {
+			m.content.currentLine--
+			newLine := &m.content.data[m.content.currentLine]
+			newLine.pos = len(newLine.runes) - 3
+		}
+	}
+
+	log.Printf(
+		"arrow key: cursor pos: (%d, %d)\n",
+		m.content.data[m.content.currentLine].pos,
+		m.content.currentLine,
+	)
+
+	// redraw
+	m.viewport.SetContent(m.content.String())
+}
+*/
