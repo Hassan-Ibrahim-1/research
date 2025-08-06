@@ -29,6 +29,7 @@ type Model struct {
 	viewport viewport.Model
 	ready    bool
 	prompt   prompt.Model
+	content  string
 }
 
 func New() Model {
@@ -50,10 +51,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "l":
-			m.viewport.Width = max(0, m.viewport.Width-1)
-		case "h":
-			m.viewport.Height = max(0, m.viewport.Height-1)
+		case "enter":
+			m.prompt.Focus()
+		case "esc":
+			log.Println("blurring prompt")
+			m.prompt.Blur()
 		}
 
 	case tea.WindowSizeMsg:
@@ -61,11 +63,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.onWindowResize(msg)
 	case prompt.PromptEnteredMsg:
 		log.Println("setting content to:", msg.Content)
-		m.viewport.SetContent(msg.Content)
+		m.content += msg.Content
+		m.viewport.SetContent(m.content)
+		m.prompt.Blur()
 	}
 
-	m.viewport, cmd = m.viewport.Update(msg)
-	cmds = append(cmds, cmd)
+	if !m.prompt.Focused() {
+		m.viewport, cmd = m.viewport.Update(msg)
+		cmds = append(cmds, cmd)
+	}
 
 	m.prompt, cmd = m.prompt.Update(msg)
 	cmds = append(cmds, cmd)
@@ -74,17 +80,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	return m.promptView()
-	// if !m.ready {
-	// 	return "\n Initializing..."
-	// }
-	// return fmt.Sprintf(
-	// 	"%s\n%s\n%s\n%s",
-	// 	m.headerView(),
-	// 	m.chatView(),
-	// 	m.footerView(),
-	// 	m.promptView(),
-	// )
+	if !m.ready {
+		return "\n Initializing..."
+	}
+	return fmt.Sprintf(
+		"%s\n%s\n%s",
+		m.headerView(),
+		m.chatView(),
+		// m.footerView(),
+		m.promptView(),
+	)
 }
 
 func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
@@ -95,7 +100,7 @@ func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
 	viewportWidth := ws.Width
 
 	if !m.ready {
-		m.prompt = prompt.New(50)
+		m.prompt = prompt.New(viewportWidth, 10)
 
 		viewportHeight :=
 			ws.Height - (verticalMarginHeight + lg.Height(m.promptView()))

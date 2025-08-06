@@ -52,7 +52,10 @@ func (l *line) addRunes(runes []rune, i int) {
 
 type Model struct {
 	viewport viewport.Model
-	focused  bool
+
+	// this flag is here to prevent double inputs
+	justFocused bool
+	focused     bool
 
 	sanitizer runeutil.Sanitizer
 
@@ -64,12 +67,12 @@ type Model struct {
 	characterLimit int
 }
 
-func New(width int) Model {
+func New(width, height int) Model {
 	if width < 0 {
 		panic("width must not be negative")
 	}
 
-	vp := viewport.New(width, 20)
+	vp := viewport.New(width, height)
 	// vp.YPosition = ypos
 
 	return Model{
@@ -77,16 +80,16 @@ func New(width int) Model {
 		characterLimit: 1024,
 		maxWidth:       width - 3,
 		viewport:       vp,
-		lines:          make([]line, 0),
+		lines:          []line{newLine(width)},
 		sanitizer:      runeutil.NewSanitizer(),
 	}
 }
 
 func (m *Model) addLine() *line {
 	// scroll down if adding a line will move the new line out of view
-	if m.currentLine == len(m.lines)-1 && len(m.lines) > m.viewport.Height {
-		m.ScrollDown()
-	}
+	// if m.currentLine == len(m.lines)-1 && len(m.lines) > m.viewport.Height {
+	// 	m.ScrollDown()
+	// }
 
 	m.lines = append(m.lines, newLine(m.maxWidth))
 
@@ -115,11 +118,19 @@ func (m *Model) lineAt(i int) *line {
 }
 
 func (m Model) Init() tea.Cmd {
+	if m.focused {
+		m.justFocused = false
+	}
+
 	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	if !m.focused {
+		return m, nil
+	}
+	if m.justFocused {
+		m.justFocused = false
 		return m, nil
 	}
 
@@ -210,10 +221,10 @@ func (m *Model) ScrollDown() {
 }
 
 func (m *Model) redraw() {
-	m.viewport.SetContent(m.String())
+	m.viewport.SetContent(m.stringWithCursor())
 }
 
-func (m *Model) String() string {
+func (m *Model) stringWithCursor() string {
 	b := strings.Builder{}
 	for i, ln := range m.lines {
 		runes := ln.runes
@@ -238,17 +249,31 @@ func (m *Model) String() string {
 	return b.String()
 }
 
+func (m *Model) String() string {
+	b := strings.Builder{}
+	for _, ln := range m.lines {
+		b.WriteString(string(ln.runes) + "\n")
+	}
+	return b.String()
+}
+
 func (m Model) View() string {
 	return m.viewport.View()
 }
 
 func (m *Model) clear() {
 	m.lines = nil
+	// have atleast one line
+	_ = m.addLine()
+	m.currentLine = 0
 	m.redraw()
 }
 
 func (m *Model) Focus() {
-	m.focused = true
+	if !m.focused {
+		m.justFocused = true
+		m.focused = true
+	}
 }
 
 func (m *Model) Blur() {
