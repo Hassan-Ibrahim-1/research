@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/charmbracelet/bubbles/runeutil"
 	"github.com/charmbracelet/bubbles/viewport"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -54,11 +54,11 @@ type Model struct {
 	viewport viewport.Model
 	focused  bool
 
+	sanitizer runeutil.Sanitizer
+
 	lines       []line
 	currentLine int
 	maxWidth    int
-
-	Cursor cursor.Model
 
 	promptPrefix   string
 	characterLimit int
@@ -78,24 +78,37 @@ func New(width int) Model {
 		maxWidth:       width - 3,
 		viewport:       vp,
 		lines:          make([]line, 0),
+		sanitizer:      runeutil.NewSanitizer(),
 	}
 }
 
 func (m *Model) addLine() *line {
-	log.Println("adding new line")
+	// scroll down if adding a line will move the new line out of view
+	if m.currentLine == len(m.lines)-1 && len(m.lines) > m.viewport.Height {
+		m.ScrollDown()
+	}
+
 	m.lines = append(m.lines, newLine(m.maxWidth))
+
 	return &m.lines[len(m.lines)-1]
+}
+
+func (m *Model) removeLine(i int) {
+	m.lines = slices.Delete(m.lines, i, i+1)
 }
 
 // inserts a line below the current line (currentLine+1)
 func (m *Model) insertLine() *line {
+	// if m.currentLine == len(m.lines)-1 && len(m.lines) > m.viewport.Height {
+	// 	m.ScrollDown()
+	// }
+
 	m.lines = slices.Insert(m.lines, m.currentLine+1, newLine(m.maxWidth))
 	return &m.lines[m.currentLine+1]
 }
 
 func (m *Model) lineAt(i int) *line {
 	if i == 0 && len(m.lines) == 0 {
-		log.Println("lineAt adding new line")
 		return m.addLine()
 	}
 	return &m.lines[i]
@@ -116,7 +129,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyRunes:
-			m.addContent(msg.Runes)
+			m.addContent(m.sanitizer.Sanitize(msg.Runes))
 
 		case tea.KeyCtrlC:
 			// TODO: TEMPORARY
@@ -176,9 +189,24 @@ func (m *Model) handleArrowKeys(key tea.KeyMsg) {
 		} else if m.currentLine > 0 {
 			m.currentLine--
 		}
+
+	case tea.KeyUp:
+		m.ScrollUp()
+
+	case tea.KeyDown:
+		m.ScrollDown()
+
 	}
 
 	m.redraw()
+}
+
+func (m *Model) ScrollUp() {
+	_ = m.viewport.ScrollUp(1)
+}
+
+func (m *Model) ScrollDown() {
+	_ = m.viewport.ScrollDown(1)
 }
 
 func (m *Model) redraw() {
