@@ -76,11 +76,8 @@ func New(width int) Model {
 		promptPrefix:   "> ",
 		characterLimit: 1024,
 		maxWidth:       width - 3,
-		// height is meant to be growable
-		// what happens if it can't grow anymore?
-		// it should page right?
-		viewport: vp,
-		lines:    make([]line, 0),
+		viewport:       vp,
+		lines:          make([]line, 0),
 	}
 }
 
@@ -141,9 +138,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		default:
 			// a control character is sent
 			if k := msg.String(); k == "alt+enter" {
-				// log.Println("Prompt entered, content:", m.lines)
 				cmd = newPromptEnteredMsg(m.String())
-
 				// clear content when the prompt is entered
 				m.clear()
 			}
@@ -160,9 +155,6 @@ func (m *Model) handleArrowKeys(key tea.KeyMsg) {
 	case tea.KeyRight:
 		if ln.pos < len(ln.runes) {
 			ln.pos++
-			if ln.pos == 49 {
-				panic("49 at handleArrowKeys")
-			}
 		} else if m.currentLine < len(m.lines)-1 {
 			m.currentLine++
 			m.lineAt(m.currentLine).pos = 0
@@ -175,14 +167,7 @@ func (m *Model) handleArrowKeys(key tea.KeyMsg) {
 		}
 	}
 
-	px, py := m.cursorPos()
-	log.Printf("arrow key pos: (%d, %d)\n", px, py)
-
 	m.redraw()
-}
-
-func (m *Model) cursorPos() (x, y int) {
-	return m.lineAt(m.currentLine).pos, m.currentLine
 }
 
 func (m *Model) redraw() {
@@ -202,9 +187,6 @@ func (m *Model) String() string {
 				runes = append(runes, blankCursor...)
 			} else {
 				// render at ln.pos
-				if ln.pos >= len(runes) {
-					log.Println("whoops")
-				}
 				styled := []rune(blockCursorStyle.Render(string(runes[ln.pos])))
 				runes[ln.pos] = styled[0]
 				runes = slices.Insert(runes, ln.pos+1, styled[1:]...)
@@ -253,12 +235,6 @@ func (m *Model) SetYPosition(ypos int) {
 func (m *Model) addContent(runes []rune) tea.Cmd {
 	m.writeRunes(runes)
 	m.redraw()
-
-	px, py := m.cursorPos()
-	log.Printf(
-		"cursor pos: (%d, %d)\n",
-		px, py,
-	)
 	return nil
 }
 
@@ -280,10 +256,6 @@ func (m *Model) removeChar() {
 
 	if ln.pos == 0 {
 		if m.currentLine > 0 {
-			// move n characters from currentLine to the line that we are about to move to.
-			// n is the amount of characters is how many characters the above line can hold
-			// the above lines cursor is set to the end
-
 			// move as many characters as possible to the line above and then move to that line
 			lineAbove := m.lineAt(m.currentLine - 1)
 			previousPos := lineAbove.pos
