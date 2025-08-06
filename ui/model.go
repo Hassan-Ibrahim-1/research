@@ -95,7 +95,7 @@ func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
 	viewportWidth := ws.Width
 
 	if !m.ready {
-		m.prompt = prompt.New(10)
+		m.prompt = prompt.New(50)
 
 		viewportHeight :=
 			ws.Height - (verticalMarginHeight + lg.Height(m.promptView()))

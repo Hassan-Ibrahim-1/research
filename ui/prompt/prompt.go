@@ -85,8 +85,8 @@ func (l *lines) String() string {
 		runes := line.runes
 		if i == l.currentLine {
 			// add cursor
-			line.pos = clamp(line.pos, 0, len(line.runes)-1)
 			runes = slices.Clone(line.runes)
+			line.pos = clamp(line.pos, -1, len(line.runes)-1)
 			if len(line.runes) == 0 || line.pos == len(line.runes)-1 {
 				// add cursor to end
 				log.Println("cursor at end")
@@ -94,10 +94,10 @@ func (l *lines) String() string {
 			} else {
 				log.Println("cursor in between")
 				// add cursor in the middle of the line
-				styled := []rune(blockCursorStyle.Render(string(runes[line.pos])))
+				styled := []rune(blockCursorStyle.Render(string(runes[line.pos+1])))
 				log.Println("styled:", styled)
-				runes = slices.Insert(runes, line.pos, styled...)
-				// runes[line.pos] = styled[0]
+				runes[line.pos+1] = styled[0]
+				runes = slices.Insert(runes, line.pos+2, styled[1:]...)
 			}
 		}
 
@@ -130,16 +130,8 @@ func (l *lines) writeRunes(runes []rune) {
 
 	ln := &l.data[l.currentLine]
 
-	// this might not be what i want???
-	// if there is a line after the currentLine then
-	// adjustLines will just merge the two, unless this line has a \n
-	// also what if a line is just a newline and i start writing to it.
-	// it should still have that newline in the end right?
-	// if len(ln.runes) > 0 && ln.runes[len(ln.runes)-1] == '\n' {
-	// 	ln = l.addLine()
-	// }
-	// ln.runes = append(ln.runes, runes...)
-	ln.addRunes(runes, len(ln.runes))
+	ln.pos = clamp(ln.pos, -1, len(ln.runes)-1)
+	ln.addRunes(runes, ln.pos+1)
 
 	previousLen := len(l.data)
 	atEnd := l.currentLine == len(l.data)-1
@@ -151,19 +143,6 @@ func (l *lines) writeRunes(runes []rune) {
 	} else if atEnd && len(l.data) < previousLen {
 		l.currentLine--
 	}
-
-	// if the current line is full then start writing to the next line
-	// but if writing in the middle of a line and the line starts overflowing
-	// then move the overflown data to the next line and keep doing this until each line
-	// fits within maxWidth. add more lines if needed
-	// how would removing characters with backspace work? maybe add another function
-	// called removeChar which removes the current character on the current line
-	// removeChar will get called when backspace is pressed
-	// removeChar should also handle the case where overflow doesn't happen anymore
-	// so characters will move back
-
-	// maybe have a separate function that adjusts all lines and makes sure that their
-	// newlines should also be handled properly
 }
 
 func (l *lines) removeChar() {
@@ -177,20 +156,20 @@ func (l *lines) removeChar() {
 
 	ln.pos = clamp(ln.pos, 0, len(ln.runes)-1)
 
-	removed := ln.runes[ln.pos]
+	// removed := ln.runes[ln.pos]
 
 	ln.runes = slices.Delete(ln.runes, ln.pos, ln.pos+1)
 	ln.pos--
 
 	l.adjustLines()
 	// if the character to remove is a new line remove two characters instead
-	if removed == '\n' {
-		// only remove the next character if it is not a newline
-		ln := &l.data[l.currentLine]
-		if ln.runes[clamp(ln.pos, 0, len(ln.runes)-1)] != '\n' {
-			l.removeChar()
-		}
-	}
+	// if removed == '\n' {
+	// 	// only remove the next character if it is not a newline
+	// 	ln := &l.data[l.currentLine]
+	// 	if ln.runes[clamp(ln.pos, 0, len(ln.runes)-1)] != '\n' {
+	// 		l.removeChar()
+	// 	}
+	// }
 }
 
 func clamp(value, min, max int) int {
