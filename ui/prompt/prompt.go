@@ -90,7 +90,7 @@ func (m *Model) addLine() *line {
 	return &m.lines[len(m.lines)-1]
 }
 
-// inserts a line at currentLine+1
+// inserts a line below the current line (currentLine+1)
 func (m *Model) insertLine() *line {
 	m.lines = slices.Insert(m.lines, m.currentLine+1, newLine(m.maxWidth))
 	return &m.lines[m.currentLine+1]
@@ -284,8 +284,20 @@ func (m *Model) removeChar() {
 			// n is the amount of characters is how many characters the above line can hold
 			// the above lines cursor is set to the end
 
-			// delete the currentLine and move up
-			m.lines = slices.Delete(m.lines, m.currentLine, m.currentLine+1)
+			// move as many characters as possible to the line above and then move to that line
+			lineAbove := m.lineAt(m.currentLine - 1)
+			previousPos := lineAbove.pos
+			n := min(len(ln.runes), m.maxWidth-len(lineAbove.runes))
+			toMerge := ln.runes[:n]
+			ln.runes = ln.runes[n:]
+			lineAbove.addRunes(toMerge, lineAbove.pos)
+			lineAbove.pos = previousPos
+
+			// if the line is empty then just delete it
+			if len(ln.runes) == 0 {
+				m.lines = slices.Delete(m.lines, m.currentLine, m.currentLine+1)
+			}
+
 			m.currentLine--
 			ln = m.lineAt(m.currentLine)
 		}
