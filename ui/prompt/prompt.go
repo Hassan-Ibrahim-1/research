@@ -37,6 +37,10 @@ func newLine(maxWidth int) line {
 }
 
 func (l *line) addRunes(runes []rune, i int) {
+	if slices.Contains(runes, '\n') {
+		panic("line.runes cannot have a newline!")
+	}
+
 	l.pos += len(runes)
 	// log.Println("current line pos:", l.pos)
 	if i == len(l.runes) {
@@ -115,8 +119,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			// TODO: TEMPORARY
 			return m, tea.Quit
 
-		// case tea.KeyBackspace:
-		// 	m.removeChar()
+		case tea.KeyBackspace:
+			m.removeChar()
 
 		case tea.KeySpace:
 			m.addContent([]rune{' '})
@@ -198,14 +202,34 @@ func (m *Model) addContent(runes []rune) tea.Cmd {
 }
 
 func (m *Model) writeRunes(runes []rune) {
-	if slices.Contains(runes, '\n') {
-		panic("line.runes cannot have a newline!")
-	}
-
 	ln := m.lineAt(m.currentLine)
 	ln.addRunes(runes, ln.pos)
-
 	m.adjustLines()
+}
+
+func (m *Model) removeChar() {
+	ln := m.lineAt(m.currentLine)
+
+	// TODO: move up a line
+	if ln.pos == 0 {
+		if m.currentLine > 0 {
+			// move n characters from currentLine to the line that we are about to move to.
+			// n is the amount of characters is how many characters the above line can hold
+			// the above lines cursor is set to the end
+			m.currentLine--
+			ln = m.lineAt(m.currentLine)
+			log.Println("m.currentLine is bigger than 0:", m.currentLine)
+		}
+		// only go up one line at most
+		if ln.pos == 0 {
+			return
+		}
+	}
+
+	ln.pos--
+	ln.runes = slices.Delete(ln.runes, ln.pos, ln.pos+1)
+
+	m.viewport.SetContent(m.String())
 }
 
 func (m *Model) adjustLines() {
@@ -227,6 +251,7 @@ func (m *Model) adjustLines() {
 			} else {
 				log.Println("adding newline")
 				nextLine = m.addLine()
+				m.currentLine++
 			}
 
 			nextLine.addRunes(overflown, 0)
