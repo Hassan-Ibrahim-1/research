@@ -90,6 +90,12 @@ func (m *Model) addLine() *line {
 	return &m.lines[len(m.lines)-1]
 }
 
+// inserts a line at currentLine+1
+func (m *Model) insertLine() *line {
+	m.lines = slices.Insert(m.lines, m.currentLine+1, newLine(m.maxWidth))
+	return &m.lines[m.currentLine+1]
+}
+
 func (m *Model) lineAt(i int) *line {
 	if i == 0 && len(m.lines) == 0 {
 		log.Println("lineAt adding new line")
@@ -125,7 +131,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case tea.KeySpace:
 			m.addContent([]rune{' '})
 		case tea.KeyEnter:
-			m.addLine()
+			m.insertLine()
 			m.currentLine++
 			m.redraw()
 
@@ -277,9 +283,11 @@ func (m *Model) removeChar() {
 			// move n characters from currentLine to the line that we are about to move to.
 			// n is the amount of characters is how many characters the above line can hold
 			// the above lines cursor is set to the end
+
+			// delete the currentLine and move up
+			m.lines = slices.Delete(m.lines, m.currentLine, m.currentLine+1)
 			m.currentLine--
 			ln = m.lineAt(m.currentLine)
-			log.Println("m.currentLine is bigger than 0:", m.currentLine)
 		}
 		return
 	}
@@ -325,10 +333,6 @@ func (m *Model) adjustLines() {
 
 			nextLine.addRunes(overflown, 0)
 		}
-	}
-	lastLine := m.lineAt(len(m.lines) - 1)
-	if len(lastLine.runes) == 0 && m.currentLine != len(m.lines)-1 {
-		m.lines = slices.Delete(m.lines, len(m.lines)-1, len(m.lines))
 	}
 }
 
