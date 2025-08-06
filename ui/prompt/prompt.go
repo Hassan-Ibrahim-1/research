@@ -125,8 +125,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	var cmd tea.Cmd
 
+	// a control character is sent
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if k := msg.String(); k == "alt+enter" {
+			cmd = newPromptEnteredMsg(m.String())
+			m.clear()
+			break
+		}
+
 		switch msg.Type {
 		case tea.KeyRunes:
 			m.addContent(m.sanitizer.Sanitize(msg.Runes))
@@ -159,13 +166,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case tea.KeyRight, tea.KeyLeft, tea.KeyUp, tea.KeyDown:
 			m.handleArrowKeys(msg)
 
-		default:
-			// a control character is sent
-			if k := msg.String(); k == "alt+enter" {
-				cmd = newPromptEnteredMsg(m.String())
-				// clear content when the prompt is entered
-				m.clear()
-			}
 		}
 	}
 
@@ -244,6 +244,7 @@ func (m Model) View() string {
 
 func (m *Model) clear() {
 	m.lines = nil
+	m.redraw()
 }
 
 func (m *Model) Focus() {
@@ -281,7 +282,6 @@ func (m *Model) writeRunes(runes []rune) {
 	ln := m.lineAt(m.currentLine)
 	ln.addRunes(runes, ln.pos)
 	m.adjustLines()
-	log.Println("brea")
 }
 
 func (m *Model) removeChar() {
