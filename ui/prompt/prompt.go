@@ -149,9 +149,25 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m *Model) String() string {
 	b := strings.Builder{}
-	for _, ln := range m.lines {
-		// TODO: cursor rendering
-		b.WriteString(string(ln.runes) + "\n")
+	for i, ln := range m.lines {
+		runes := ln.runes
+
+		if i == m.currentLine {
+			runes = slices.Clone(ln.runes)
+
+			if ln.pos == len(runes) {
+				// render the cursor at the end of the line
+				runes = append(runes, blankCursor...)
+			} else {
+				// render at ln.pos
+				styled := []rune(blockCursorStyle.Render(string(runes[ln.pos])))
+				runes[ln.pos] = styled[0]
+				runes = slices.Insert(runes, ln.pos+1, styled[1:]...)
+			}
+
+		}
+
+		b.WriteString(string(runes) + "\n")
 	}
 	return b.String()
 }
@@ -210,7 +226,11 @@ func (m *Model) writeRunes(runes []rune) {
 func (m *Model) removeChar() {
 	ln := m.lineAt(m.currentLine)
 
-	// TODO: move up a line
+	// deferred because of a possible early return
+	defer func() {
+		m.viewport.SetContent(m.String())
+	}()
+
 	if ln.pos == 0 {
 		if m.currentLine > 0 {
 			// move n characters from currentLine to the line that we are about to move to.
@@ -220,16 +240,11 @@ func (m *Model) removeChar() {
 			ln = m.lineAt(m.currentLine)
 			log.Println("m.currentLine is bigger than 0:", m.currentLine)
 		}
-		// only go up one line at most
-		if ln.pos == 0 {
-			return
-		}
+		return
 	}
 
 	ln.pos--
 	ln.runes = slices.Delete(ln.runes, ln.pos, ln.pos+1)
-
-	m.viewport.SetContent(m.String())
 }
 
 func (m *Model) adjustLines() {
