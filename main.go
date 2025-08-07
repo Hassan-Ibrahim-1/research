@@ -6,7 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/Hassan-Ibrahim-1/research/ui"
+	"github.com/Hassan-Ibrahim-1/research/llm"
+	// "github.com/Hassan-Ibrahim-1/research/ui"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -23,17 +24,37 @@ func main() {
 		log.SetOutput(io.Discard)
 	}
 
-	m := ui.New()
+	// m := ui.New()
+	//
+	// p := tea.NewProgram(
+	// 	m,
+	// 	tea.WithAltScreen(),
+	// 	tea.WithMouseCellMotion(),
+	// )
+	// if _, err := p.Run(); err != nil {
+	// 	fmt.Printf("Err: %v", err)
+	// 	os.Exit(1)
+	// }
 
-	p := tea.NewProgram(
-		m,
-		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
-	)
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Err: %v", err)
-		os.Exit(1)
+	s := llm.NewSession("mistral")
+
+	prompt := "here is some code: pub fn main() !void {return error.Oops;}"
+	response, err := s.SendPrompt(prompt)
+	if err != nil {
+		fmt.Println("Prompt failed:", err)
+		return
 	}
+
+	fmt.Printf("user: %s\nmistral: %s\n", prompt, response)
+
+	prompt = "what language was the code i gave you written in?"
+	response, err = s.SendPrompt(prompt)
+	if err != nil {
+		fmt.Println("Prompt failed:", err)
+		return
+	}
+
+	fmt.Printf("user: %s\nmistral: %s\n", prompt, response)
 }
 
 func enableLogs() io.WriteCloser {
