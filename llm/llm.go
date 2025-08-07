@@ -1,11 +1,14 @@
 package llm
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 type Request struct {
@@ -49,7 +52,9 @@ func (m message) String() string {
 }
 
 type Session struct {
-	model    string
+	model string
+
+	mu       sync.Mutex
 	messages []message
 }
 
@@ -68,16 +73,16 @@ func (s *Session) constructPrompt(prompt string) string {
 	return b.String()
 }
 
-func (s *Session) SendPrompt(prompt string) (string, error) {
+func (s *Session) SendPrompt(prompt string) (<-chan string, error) {
 	request := Request{
 		Model:  s.model,
 		Prompt: s.constructPrompt(prompt),
-		Stream: false,
+		Stream: true,
 	}
 
 	requestJson, err := json.Marshal(request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	resp, err := http.Post(
@@ -86,24 +91,56 @@ func (s *Session) SendPrompt(prompt string) (string, error) {
 		bytes.NewReader(requestJson),
 	)
 	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	var modelResponse Response
-	err = json.NewDecoder(resp.Body).Decode(&modelResponse)
-	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	if !modelResponse.Done {
-		return "", fmt.Errorf(
-			"model response not done, only %q sent back",
-			modelResponse.Response,
-		)
-	}
+	log.Println("got a response", resp)
 
-	s.messages = append(s.messages, newMessage(prompt, modelResponse.Response))
+	ch := make(chan string)
 
-	return modelResponse.Response, nil
+	go func() {
+		defer resp.Body.Close()
+		defer close(ch)
+
+		var fullResponse strings.Builder
+
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			line := scanner.Bytes()
+			if line == nil {
+				continue
+			}
+
+			var partialResponse Response
+			err = json.Unmarshal(line, &partialResponse)
+			if err != nil {
+				log.Println("Session err:", err)
+				continue
+			}
+
+			if resp := partialResponse.Response; resp != "" {
+				fullResponse.WriteString(resp)
+				log.Println("partial response:", resp)
+				ch <- resp
+			}
+
+			if partialResponse.Done {
+				break
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			log.Println("error reading streaming response:", err)
+		} else {
+			s.addMessage(newMessage(prompt, fullResponse.String()))
+		}
+	}()
+
+	return ch, nil
+}
+
+func (s *Session) addMessage(msg message) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.messages = append(s.messages, msg)
 }

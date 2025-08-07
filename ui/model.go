@@ -61,12 +61,12 @@ func (m *Model) onPromptEntered(prompt string) error {
 	m.content += "User: " + prompt + "\n"
 	m.prompt.Blur()
 
-	response, err := m.session.SendPrompt(prompt)
+	_, err := m.session.SendPrompt(prompt)
 	if err != nil {
 		return err
 	}
 
-	m.content += "Response: " + response + "\n"
+	// m.content += "Response: " + response + "\n"
 
 	return nil
 }
