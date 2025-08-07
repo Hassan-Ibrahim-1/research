@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/Hassan-Ibrahim-1/research/llm"
-	// "github.com/Hassan-Ibrahim-1/research/ui"
+	"github.com/Hassan-Ibrahim-1/research/ui"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -25,44 +25,44 @@ func main() {
 	}
 
 	s := llm.NewSession("qwen2.5")
-	//
-	// m := ui.New(&s)
-	//
-	// p := tea.NewProgram(
-	// 	m,
-	// 	tea.WithAltScreen(),
-	// 	tea.WithMouseCellMotion(),
-	// )
-	// if _, err := p.Run(); err != nil {
-	// 	fmt.Printf("Err: %v", err)
-	// 	os.Exit(1)
+
+	m := ui.New(&s)
+
+	p := tea.NewProgram(
+		m,
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+	)
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Err: %v", err)
+		os.Exit(1)
+	}
+
+	// prompt := "here is some code: pub fn main() !void {return error.Oops;}"
+	// response, err := s.SendPrompt(prompt)
+	// if err != nil {
+	// 	fmt.Println("Prompt failed:", err)
+	// 	return
 	// }
-
-	prompt := "here is some code: pub fn main() !void {return error.Oops;}"
-	response, err := s.SendPrompt(prompt)
-	if err != nil {
-		fmt.Println("Prompt failed:", err)
-		return
-	}
-
-	fmt.Printf("user: %s\nmistral: ", prompt)
-	for str := range response {
-		fmt.Print(str)
-	}
-	fmt.Print("\n")
-
-	prompt = "what language was the code i gave you written in?"
-	response, err = s.SendPrompt(prompt)
-	if err != nil {
-		fmt.Println("Prompt failed:", err)
-		return
-	}
-
-	fmt.Printf("user: %s\nmistral: ", prompt)
-	for str := range response {
-		fmt.Print(str)
-	}
-	fmt.Print("\n")
+	//
+	// fmt.Printf("user: %s\nmistral: ", prompt)
+	// for str := range response {
+	// 	fmt.Print(str)
+	// }
+	// fmt.Print("\n")
+	//
+	// prompt = "what language was the code i gave you written in?"
+	// response, err = s.SendPrompt(prompt)
+	// if err != nil {
+	// 	fmt.Println("Prompt failed:", err)
+	// 	return
+	// }
+	//
+	// fmt.Printf("user: %s\nmistral: ", prompt)
+	// for str := range response {
+	// 	fmt.Print(str)
+	// }
+	// fmt.Print("\n")
 }
 
 func enableLogs() io.WriteCloser {
