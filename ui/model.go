@@ -5,10 +5,12 @@ import (
 	"log"
 	"strings"
 
+	"github.com/Hassan-Ibrahim-1/research/llm"
 	"github.com/Hassan-Ibrahim-1/research/ui/prompt"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	lg "github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/wordwrap"
 )
 
 var (
@@ -23,6 +25,8 @@ var (
 		b := lg.RoundedBorder()
 		return titleStyle.BorderStyle(b)
 	}()
+
+	errorStyle = lg.NewStyle().Foreground(lg.Color("31")).Bold(true)
 )
 
 type Model struct {
@@ -30,13 +34,36 @@ type Model struct {
 	ready    bool
 	prompt   prompt.Model
 	content  string
+
+	session *llm.Session
 }
 
-func New() Model {
-	return Model{}
+func New(session *llm.Session) Model {
+	return Model{
+		session: session,
+	}
 }
 
 func (m Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m *Model) redrawViewport() {
+	wrapped := wordwrap.String(m.content, m.viewport.Width-3)
+	m.viewport.SetContent(wrapped)
+}
+
+func (m *Model) onPromptEntered(prompt string) error {
+	m.content += "User: " + prompt + "\n"
+	m.prompt.Blur()
+
+	response, err := m.session.SendPrompt(prompt)
+	if err != nil {
+		return err
+	}
+
+	m.content += "Response: " + response + "\n"
+
 	return nil
 }
 
@@ -49,7 +76,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q", "ctrl+c":
+		case "ctrl+c":
 			return m, tea.Quit
 		case "enter":
 			m.prompt.Focus()
@@ -62,10 +89,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// TODO: handle promptView resizes
 		m.onWindowResize(msg)
 	case prompt.PromptEnteredMsg:
-		log.Println("setting content to:", msg.Content)
-		m.content += msg.Content
-		m.viewport.SetContent(m.content)
-		m.prompt.Blur()
+		err := m.onPromptEntered(msg.Content)
+		if err != nil {
+			m.reportError(err)
+		}
 	}
 
 	if !m.prompt.Focused() {
@@ -76,7 +103,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.prompt, cmd = m.prompt.Update(msg)
 	cmds = append(cmds, cmd)
 
+	m.redrawViewport()
+
 	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) reportError(err error) {
+	log.Println("err:", err)
+	m.content += "err"
 }
 
 func (m Model) View() string {
@@ -117,7 +151,6 @@ func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
 		// Padding(2).Margin(10)
 
 		m.ready = true
-
 	} else {
 		viewportHeight :=
 			ws.Height - (verticalMarginHeight + lg.Height(m.promptView()))
@@ -128,7 +161,7 @@ func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
 }
 
 func (m *Model) headerView() string {
-	title := titleStyle.Render("Pager")
+	title := titleStyle.Render("Research")
 	line := strings.Repeat("-", max(0, m.viewport.Width-lg.Width(title)))
 	return lg.JoinHorizontal(lg.Center, title, line)
 }
