@@ -16,6 +16,9 @@ create a prompt area using a viewport.
 
     -- better distinction between user messages and llm responses
     - streaming llm responses
+        don't format the viewport until the response is fully streamed
+        don't run glamour.Render() on every redrawViewport, its just wasteful
+        only call it on new user messages and, when on llm responses on when they are fully sent
     - being able to attach urls / files
         parse the user message for certain patterns like #(url) / @(file)
         or tell the llm to tell the system to get a file and send the file back to it
