@@ -9,8 +9,8 @@ import (
 	"github.com/Hassan-Ibrahim-1/research/ui/prompt"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	lg "github.com/charmbracelet/lipgloss"
-	"github.com/muesli/reflow/wordwrap"
 )
 
 var (
@@ -48,9 +48,13 @@ func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m *Model) redrawViewport() {
-	wrapped := wordwrap.String(m.content, m.viewport.Width-3)
-	m.viewport.SetContent(wrapped)
+func (m *Model) redrawViewport() error {
+	formatted, err := glamour.Render(m.content, "dark")
+	if err != nil {
+		return err
+	}
+	m.viewport.SetContent(formatted)
+	return nil
 }
 
 func (m *Model) onPromptEntered(prompt string) error {
@@ -103,7 +107,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.prompt, cmd = m.prompt.Update(msg)
 	cmds = append(cmds, cmd)
 
-	m.redrawViewport()
+	err := m.redrawViewport()
+	if err != nil {
+		m.reportError(err)
+	}
 
 	return m, tea.Batch(cmds...)
 }

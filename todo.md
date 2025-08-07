@@ -13,3 +13,10 @@ create a prompt area using a viewport.
     - test prompt.go
     - scrolling
     - height changes based on text length and newlines
+
+    -- better distinction between user messages and llm responses
+    - streaming llm responses
+    - being able to attach urls / files
+        parse the user message for certain patterns like #(url) / @(file)
+        or tell the llm to tell the system to get a file and send the file back to it
+        (maybe also add the ability to add files that are not part of a .gitignore)
