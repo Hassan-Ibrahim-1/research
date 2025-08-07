@@ -32,8 +32,8 @@ var (
 
 const glamourStyle = "dark"
 
-type llmResponseStartedMsg struct {
-	ch <-chan string
+type llmResponseStartMsg struct {
+	prompt string
 }
 
 type llmPartialResponseMsg struct {
@@ -87,13 +87,8 @@ func (m *Model) onPromptEntered(prompt string) (tea.Cmd, error) {
 
 	m.prompt.Blur()
 
-	ch, err := m.session.SendPrompt(prompt)
-	if err != nil {
-		return nil, err
-	}
-
 	return func() tea.Msg {
-		return llmResponseStartedMsg{ch}
+		return llmResponseStartMsg{prompt}
 	}, nil
 }
 
@@ -122,13 +117,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd, err := m.onPromptEntered(msg.Content)
 		if err != nil {
 			m.reportError(err)
+		} else {
+			cmds = append(cmds, cmd)
 		}
-		cmds = append(cmds, cmd)
 		m.redrawViewport(m.messages)
 
-	case llmResponseStartedMsg:
+	case llmResponseStartMsg:
 		m.startReadingLlmResponse()
-		cmds = append(cmds, readResponse(msg.ch))
+		ch, err := m.session.SendPrompt(msg.prompt)
+		if err != nil {
+			m.reportError(err)
+		} else {
+			cmds = append(cmds, readResponse(ch))
+		}
 
 	case llmPartialResponseMsg:
 		if !m.readingLlmResponse {
