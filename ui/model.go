@@ -109,13 +109,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "enter":
-			if !m.readingLlmResponse {
-				m.prompt.Focus()
-			}
+			m.prompt.Focus()
 		case "esc":
-			if !m.readingLlmResponse {
-				m.prompt.Blur()
-			}
+			m.prompt.Blur()
 		}
 
 	case tea.WindowSizeMsg:
@@ -181,11 +177,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) startReadingLlmResponse() {
 	m.readingLlmResponse = true
 	m.currentMessage = new(string)
+	m.prompt.SetCanEnterMessage(false)
 }
 
 func (m *Model) stopReadingLlmResponse() {
 	m.currentMessage = nil
 	m.readingLlmResponse = false
+	m.prompt.SetCanEnterMessage(true)
 }
 
 func readResponse(ch <-chan string) tea.Cmd {
@@ -237,6 +235,7 @@ func (m *Model) onWindowResize(ws tea.WindowSizeMsg) {
 		// m.prompt.SetYPosition(viewportHeight + footerHeight)
 		m.prompt.Focus()
 		m.prompt.SetStyle(lg.NewStyle().BorderStyle(lg.RoundedBorder()))
+		m.prompt.SetCanEnterMessage(true)
 
 		m.viewport.Style = lg.NewStyle().BorderStyle(lg.RoundedBorder())
 		// BorderForeground(lg.Color("62")).

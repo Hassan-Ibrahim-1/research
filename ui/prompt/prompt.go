@@ -63,6 +63,8 @@ type Model struct {
 	currentLine int
 	maxWidth    int
 
+	canEnterMessage bool
+
 	promptPrefix   string
 	characterLimit int
 }
@@ -140,8 +142,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if k := msg.String(); k == "alt+enter" {
-			cmd = newPromptEnteredMsg(m.String())
-			m.clear()
+			if m.canEnterMessage {
+				cmd = newPromptEnteredMsg(m.String())
+				m.clear()
+			}
 			break
 		}
 
@@ -382,6 +386,10 @@ func (m *Model) adjustLines() {
 			nextLine.addRunes(overflown, 0)
 		}
 	}
+}
+
+func (m *Model) SetCanEnterMessage(b bool) {
+	m.canEnterMessage = b
 }
 
 // PromptEnteredMsg is sent when alt+enter is pressed when the prompt area is focused.
