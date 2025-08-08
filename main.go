@@ -24,7 +24,7 @@ func main() {
 		log.SetOutput(io.Discard)
 	}
 
-	s := llm.NewSession("mistral")
+	s := llm.NewSession("gpt-oss:20b")
 
 	m := ui.New(&s)
 

@@ -20,3 +20,5 @@ create a prompt area using a viewport.
         parse the user message for certain patterns like #(url) / @(file)
         or tell the llm to tell the system to get a file and send the file back to it
         (maybe also add the ability to add files that are not part of a .gitignore)
+        TEST THIS!
+    when at the bottom, scroll automatically
