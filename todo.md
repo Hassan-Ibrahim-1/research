@@ -16,35 +16,23 @@ create a prompt area using a viewport.
 
     -- better distinction between user messages and llm responses
     -- streaming llm responses
-    - being able to attach urls / files
-        parse the user message for certain patterns like #(url) / @(file)
-        or tell the llm to tell the system to get a file and send the file back to it
+    -- being able to attach urls / files
 
-        search for the @ symbol and then read until the start of a bracket
-        then read until a right paren is found
-        be able to escape this by adding a backslash like \@attack-file()
-        if the function is not valid or parenthesis are missing
-        then just ignore it and send it to the llm normally
-
-        otherwise, remove the function and swap it out with the file contents
-        if the file or url are not found display an error in the chat thing
-        and don't send the prompt to the llm
-        
-        parse it like a function call, can have multiple arguments
-        separated by a comma
-
-        @attach-file()
-        @attack-link()
-
-        (maybe also add the ability to add files that are not part of a .gitignore)
-
-### Tomorrow
-    - add commands to llm/
-    - embed stuff into prompts (these should be stored in messages)
-        the ui will only get the messages with the function calls
-        not the actual embedded stuff
+### Up next
+    -- add commands to llm/
+    -- embed stuff into prompts (these should be stored in messages)
+        -- the ui will only get the messages with the function calls
+        -- not the actual embedded stuff
     add some styling to differentiate user prompts and responses
         background stuff, etc
-    send embedded messages to the llm
+    -- send embedded messages to the llm
 
-    command table in llm/
+    tests
+
+    -- command table in llm/
+    when at the bottom, scroll automatically
+
+    figure out a way to let my laptop communicate with my pc
+    so that i can use it to run better models
+
+    status indicators for reading a file / fetching a link

@@ -2,6 +2,7 @@ package llm
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -24,7 +25,7 @@ func (s *Session) attachFile(
 			return nil, err
 		}
 
-		_, err = fileContents.WriteString(file + ":\n")
+		_, err = fileContents.WriteString(fmt.Sprintf("<file name=%q>\n", file))
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +35,7 @@ func (s *Session) attachFile(
 			return nil, err
 		}
 
-		err = fileContents.WriteByte('\n')
+		_, err = fileContents.WriteString("\n</file>\n")
 		if err != nil {
 			return nil, err
 		}
@@ -58,12 +59,13 @@ func (s *Session) attachLink(
 		if err != nil {
 			return nil, err
 		}
+
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = urlContents.WriteString(url + "\n")
+		_, err = urlContents.WriteString(fmt.Sprintf("<link url=%q>\n", url))
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +75,7 @@ func (s *Session) attachLink(
 			return nil, err
 		}
 
-		err = urlContents.WriteByte('\n')
+		_, err = urlContents.WriteString(fmt.Sprintf("\n</link>\n"))
 		if err != nil {
 			return nil, err
 		}

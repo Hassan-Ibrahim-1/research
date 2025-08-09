@@ -144,7 +144,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// doing word wrapping here because sometimes the text can get too
 		// long for the screen
-		wrapped := wordwrap.String(m.messages+*m.currentMessage, m.viewport.Width-3)
+		wrapped := m.wrapString(m.messages + *m.currentMessage)
 		m.redrawViewport(wrapped)
 
 	case llmResponseDoneMsg:
@@ -175,6 +175,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m *Model) wrapString(str string) string {
+	return wordwrap.String(str, m.viewport.Width-5)
+}
+
 func (m *Model) startReadingLlmResponse() {
 	m.readingLlmResponse = true
 	m.currentMessage = new(string)
@@ -200,7 +204,9 @@ func readResponse(ch <-chan string) tea.Cmd {
 
 func (m *Model) reportError(err error) {
 	log.Println("err:", err)
-	m.messages += errorStyle.Render(fmt.Sprintf("\terr: %v\n", err))
+	m.messages += m.wrapString(
+		errorStyle.Render(fmt.Sprintf("\terr: %v\n", err)),
+	)
 	m.redrawViewport(m.messages)
 }
 

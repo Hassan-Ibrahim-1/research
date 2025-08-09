@@ -95,6 +95,11 @@ func (s *Session) executePromptCommands(prompt []byte) ([]byte, error) {
 				)
 			}
 
+		case "text":
+			// mostly for testing purposes
+			data := []byte(strings.Join(cmd.Arguments, ", "))
+			newPrompt = embed(newPrompt, cmd.Loc, data)
+
 		default:
 			return nil, fmt.Errorf(
 				"Invalid command %q. acceptable commands are: attach-file, file, attach-link, link",
