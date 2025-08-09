@@ -19,4 +19,21 @@ create a prompt area using a viewport.
     - being able to attach urls / files
         parse the user message for certain patterns like #(url) / @(file)
         or tell the llm to tell the system to get a file and send the file back to it
+
+        search for the @ symbol and then read until the start of a bracket
+        then read until a right paren is found
+        be able to escape this by adding a backslash like \@attack-file()
+        if the function is not valid or parenthesis are missing
+        then just ignore it and send it to the llm normally
+
+        otherwise, remove the function and swap it out with the file contents
+        if the file or url are not found display an error in the chat thing
+        and don't send the prompt to the llm
+        
+        parse it like a function call, can have multiple arguments
+        separated by a comma
+
+        @attach-file()
+        @attack-link()
+
         (maybe also add the ability to add files that are not part of a .gitignore)
