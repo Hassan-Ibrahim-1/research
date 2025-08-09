@@ -266,6 +266,7 @@ func TestCommandString(t *testing.T) {
 		{"@attach-file(file.txt, image.png)"},
 		{"@attach-link(example.com, google.com)"},
 	}
+
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("test_%d", i), func(t *testing.T) {
 			cmd, n, err := parseCommand([]byte(tt.input), 0)
