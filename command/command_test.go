@@ -67,6 +67,33 @@ func TestParseCommands(t *testing.T) {
 				),
 			},
 		},
+		{
+			`
+Hey here's some files @attach-file(image.png, main.go, test.c)
+And here's some urls @attach-link(example.com, wikipedia.com)
+and here's a markdown file @attach-markdown(input.md).
+`,
+			[]Command{
+				NewCommand(
+					"attach-file",
+					[]string{"image.png", "main.go", "test.c"},
+					23,
+					63,
+				),
+				NewCommand(
+					"attach-link",
+					[]string{"example.com", "wikipedia.com"},
+					85,
+					125,
+				),
+				NewCommand(
+					"attach-markdown",
+					[]string{"input.md"},
+					153,
+					179,
+				),
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -114,6 +141,18 @@ func TestParseCommandsString(t *testing.T) {
 				"@attach-link(example.com, google.com)",
 			},
 		},
+		{
+			`
+Hey here's some files @attach-file(image.png, main.go, test.c)
+And here's some urls @attach-link(example.com, wikipedia.com)
+and here's a markdown file @attach-markdown(input.md).
+`,
+			[]string{
+				"@attach-file(image.png, main.go, test.c)",
+				"@attach-link(example.com, wikipedia.com)",
+				"@attach-markdown(input.md)",
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -134,6 +173,55 @@ func TestParseCommandsString(t *testing.T) {
 						"command not equal. got=%q. expected=%q.",
 						s,
 						tt.expected[i],
+					)
+				}
+			}
+		})
+	}
+}
+
+func TestParseCommandsSubstring(t *testing.T) {
+	tests := []struct {
+		input string
+	}{
+		{"no command"},
+		{"@attach-file(file.txt)"},
+		{"\\@attach-file(file.txt)"},
+		{"@attach-file(file.txt, image.png)"},
+		{
+			"file: @attach-file(file.txt) link: @attach-link(example.com)",
+		},
+		{
+			"@attach-file(file.txt) \\@attach-link(example.com)",
+		},
+		{
+			"file: @attach-file(file.txt)\nlink: @attach-link(example.com)",
+		},
+		{
+			"@attach-file(file.txt)@attach-link(example.com)",
+		},
+		{
+			"file: @attach-file(file.txt)\nlink: @attach-link(example.com)",
+		},
+		{
+			`
+Hey here's some files @attach-file(image.png, main.go, test.c)
+And here's some urls @attach-link(example.com, wikipedia.com)
+and here's a markdown file @attach-markdown(input.md).
+`,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("test_%d", i), func(t *testing.T) {
+			cmds := ParseCommands([]byte(tt.input))
+			for _, cmd := range cmds {
+				substr := tt.input[cmd.Loc.Start:cmd.Loc.End]
+				if s := cmd.String(); s != substr {
+					t.Errorf(
+						"Command string not equal to substring. got=%q. expected=%q",
+						s,
+						substr,
 					)
 				}
 			}
