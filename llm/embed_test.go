@@ -1,4 +1,4 @@
-package embed
+package llm
 
 import (
 	"fmt"
@@ -33,7 +33,7 @@ func TestEmbed(t *testing.T) {
 				End:   start + len(embedTag),
 			}
 
-			s := string(Embed([]byte(tt.s), rng, []byte(tt.data)))
+			s := string(embed([]byte(tt.s), rng, []byte(tt.data)))
 			if s != tt.expected {
 				t.Errorf(
 					"bad embeded string. got=%q. expected=%q.",
@@ -63,7 +63,7 @@ func TestEmbedUrl(t *testing.T) {
 		End:   start + len(embedTag),
 	}
 
-	embedded, err := URL([]byte(str), rng, server.URL)
+	embedded, err := embedURL([]byte(str), rng, server.URL)
 	if err != nil {
 		t.Errorf("Failed to embed: %s", err)
 	}
