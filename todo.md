@@ -37,3 +37,12 @@ create a prompt area using a viewport.
         @attack-link()
 
         (maybe also add the ability to add files that are not part of a .gitignore)
+
+### Tomorrow
+    - add commands to llm/
+    - embed stuff into prompts (these should be stored in messages)
+        the ui will only get the messages with the function calls
+        not the actual embedded stuff
+    add some styling to differentiate user prompts and responses
+        background stuff, etc
+    send embedded messages to the llm
