@@ -46,3 +46,5 @@ create a prompt area using a viewport.
     add some styling to differentiate user prompts and responses
         background stuff, etc
     send embedded messages to the llm
+
+    command table in llm/
