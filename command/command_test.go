@@ -98,7 +98,7 @@ and here's a markdown file @attach-markdown(input.md).
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("test_%d", i), func(t *testing.T) {
-			cmds := ParseCommands([]byte(tt.input))
+			cmds := Parse([]byte(tt.input))
 			if len(cmds) != len(tt.expected) {
 				t.Fatalf(
 					"unequal number of commands: got=%d. expected=%d. commands=%s. expected=%s",
@@ -157,7 +157,7 @@ and here's a markdown file @attach-markdown(input.md).
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("test_%d", i), func(t *testing.T) {
-			cmds := ParseCommands([]byte(tt.input))
+			cmds := Parse([]byte(tt.input))
 			if len(cmds) != len(tt.expected) {
 				t.Fatalf(
 					"unequal number of commands: got=%d. expected=%d. commands=%s. expected=%+v",
@@ -214,7 +214,7 @@ and here's a markdown file @attach-markdown(input.md).
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("test_%d", i), func(t *testing.T) {
-			cmds := ParseCommands([]byte(tt.input))
+			cmds := Parse([]byte(tt.input))
 			for _, cmd := range cmds {
 				substr := tt.input[cmd.Loc.Start:cmd.Loc.End]
 				if s := cmd.String(); s != substr {

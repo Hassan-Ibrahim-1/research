@@ -36,7 +36,7 @@ func NewCommand(name string, arguments []string, start, end int) Command {
 	}
 }
 
-func ParseCommands(str []byte) []Command {
+func Parse(str []byte) []Command {
 	cmds := []Command{}
 
 	for i := 0; i < len(str); {

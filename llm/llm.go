@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/Hassan-Ibrahim-1/research/command"
 )
 
 type Request struct {
@@ -64,19 +66,72 @@ func NewSession(model string) Session {
 	}
 }
 
-func (s *Session) constructPrompt(prompt string) string {
+func (s *Session) executePromptCommands(prompt []byte) ([]byte, error) {
+	var (
+		err       error
+		newPrompt = prompt
+	)
+
+	cmds := command.Parse(prompt)
+	for _, cmd := range cmds {
+		switch cmd.Name {
+		case "attach-file", "file":
+			newPrompt, err = s.attachFile(cmd, newPrompt)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"Failed to embed files %+v: %w",
+					cmd.Arguments,
+					err,
+				)
+			}
+
+		case "attach-link", "link":
+			newPrompt, err = s.attachLink(cmd, newPrompt)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"Failed to embed links %+v: %w",
+					cmd.Arguments,
+					err,
+				)
+			}
+
+		default:
+			return nil, fmt.Errorf(
+				"Invalid command %q. acceptable commands are: attach-file, file, attach-link, link",
+				cmd.Name,
+			)
+		}
+	}
+
+	return newPrompt, nil
+}
+
+func (s *Session) constructPrompt(str string) (string, error) {
+	prompt := []byte(str)
+
+	prompt, err := s.executePromptCommands(prompt)
+	if err != nil {
+		return "", fmt.Errorf("Failed to execute prompt commands: %w", err)
+	}
+
 	b := strings.Builder{}
 	for _, msg := range s.messages {
 		b.WriteString(msg.String())
 	}
+
 	b.WriteString(fmt.Sprintf("<User Prompt>\n%s\n</User Prompt>\n", prompt))
-	return b.String()
+	return b.String(), nil
 }
 
 func (s *Session) SendPrompt(prompt string) (<-chan string, error) {
+	fullPrompt, err := s.constructPrompt(prompt)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to construct prompt: %w", err)
+	}
+
 	request := Request{
 		Model:  s.model,
-		Prompt: s.constructPrompt(prompt),
+		Prompt: fullPrompt,
 		Stream: true,
 	}
 
@@ -92,6 +147,13 @@ func (s *Session) SendPrompt(prompt string) (<-chan string, error) {
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode == 404 {
+		return nil, fmt.Errorf(
+			"%s is either not running or is not a valid model",
+			s.model,
+		)
 	}
 
 	log.Println("got a response", resp)
@@ -131,9 +193,10 @@ func (s *Session) SendPrompt(prompt string) (<-chan string, error) {
 
 		if err := scanner.Err(); err != nil {
 			log.Println("error reading streaming response:", err)
-		} else {
-			s.addMessage(newMessage(prompt, fullResponse.String()))
+			return
 		}
+
+		s.addMessage(newMessage(prompt, fullResponse.String()))
 	}()
 
 	return ch, nil

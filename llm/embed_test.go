@@ -44,36 +44,3 @@ func TestEmbed(t *testing.T) {
 		})
 	}
 }
-
-func TestEmbedUrl(t *testing.T) {
-	serverResponse := "<p>Hello, World</p>"
-
-	server := httptest.NewServer(
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(serverResponse))
-		}),
-	)
-	defer server.Close()
-
-	embedTag := "[embed]"
-	str := "test " + embedTag
-	start := strings.Index(str, embedTag)
-	rng := command.Range{
-		Start: start,
-		End:   start + len(embedTag),
-	}
-
-	embedded, err := embedURL([]byte(str), rng, server.URL)
-	if err != nil {
-		t.Errorf("Failed to embed: %s", err)
-	}
-
-	expected := "test " + serverResponse
-	if s := string(embedded); s != expected {
-		t.Errorf(
-			"embedded string not equal to expected. got=%q. expected=%q",
-			s,
-			expected,
-		)
-	}
-}

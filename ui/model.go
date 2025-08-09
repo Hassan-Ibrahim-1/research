@@ -123,11 +123,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.redrawViewport(m.messages)
 
 	case llmResponseStartMsg:
-		m.startReadingLlmResponse()
 		ch, err := m.session.SendPrompt(msg.prompt)
 		if err != nil {
 			m.reportError(err)
 		} else {
+			m.startReadingLlmResponse()
 			cmds = append(cmds, readResponse(ch))
 		}
 
@@ -200,7 +200,7 @@ func readResponse(ch <-chan string) tea.Cmd {
 
 func (m *Model) reportError(err error) {
 	log.Println("err:", err)
-	m.messages += "err"
+	m.messages += errorStyle.Render(fmt.Sprintf("\terr: %v\n", err))
 	m.redrawViewport(m.messages)
 }
 
