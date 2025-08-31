@@ -1,3 +1,5 @@
+> This project isn't yet meant to be used by anybody yet, it's still in development.
+> 
 ## About
 Research is a simple simple chatbot that can do some basic interactions like reading from a file or fetching content from a link.
 
